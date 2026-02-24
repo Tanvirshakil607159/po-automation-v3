@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0f1117;
+  --foreground: #e5e7eb;
+  --surface: #1a1d27;
+  --surface-hover: #22252f;
+  --border: #2a2d37;
+  --amber-glow: rgba(245, 158, 11, 0.15);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Number input spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 0.5;
+}
+
+/* Smooth focus transitions */
+input:focus, button:focus-visible {
+  outline: none;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(26, 29, 39, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
