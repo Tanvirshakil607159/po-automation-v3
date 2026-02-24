@@ -14,7 +14,7 @@ export default function ExportButton() {
         setExporting(true);
         try {
             const filename = uploadResult?.filename?.replace(".pdf", "") || "PO_Export";
-            await exportExcel(groupedData, consumptionValues, filename);
+            await exportExcel(groupedData as any, consumptionValues, filename);
         } catch (err) {
             console.error("Export failed:", err);
             alert("Export failed. Please try again.");
