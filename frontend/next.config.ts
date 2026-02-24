@@ -1,17 +1,7 @@
 import type { NextConfig } from "next";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
-
 const nextConfig: NextConfig = {
-  /* Proxy /api/* to the FastAPI backend */
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${BACKEND_URL}/api/:path*`,
-      },
-    ];
-  },
+  /* API routes in src/app/api/ handle proxying to the backend */
 };
 
 export default nextConfig;
