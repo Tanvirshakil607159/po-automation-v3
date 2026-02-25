@@ -74,7 +74,7 @@ export default function Home() {
               <div className="text-center mb-6 sm:mb-10">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 mb-4">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                  <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Anti-Gravity Sorting</span>
+                  <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">K.A. Design Accessories Ltd.</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">
                   PO to Item-Wise Sheets

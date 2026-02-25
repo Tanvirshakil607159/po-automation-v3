@@ -105,7 +105,7 @@ export default function Sidebar() {
                             </div>
                             <div>
                                 <h1 className="text-base font-bold text-white tracking-tight">PO Sorter</h1>
-                                <p className="text-[11px] text-gray-500 font-medium">v3.0 • Anti-Gravity</p>
+                                <p className="text-[11px] text-gray-500 font-medium">v3.0 • K.A. Design</p>
                             </div>
                         </div>
                         {/* Close button for mobile */}
@@ -152,11 +152,13 @@ export default function Sidebar() {
                             {history.map((item) => {
                                 const { date, time } = formatDate(item.upload_date);
                                 return (
-                                    <button
+                                    <div
                                         key={item.id}
                                         onClick={() => handleLoad(item.id)}
-                                        className="w-full group flex items-start gap-3 px-3 py-2.5 rounded-xl text-left transition-all
+                                        className="w-full group flex items-start gap-3 px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer
                       hover:bg-gray-800/80 active:scale-[0.98]"
+                                        role="button"
+                                        tabIndex={0}
                                         id={`history-${item.id}`}
                                     >
                                         <div className="mt-0.5 w-8 h-8 flex-shrink-0 rounded-lg bg-gray-800 flex items-center justify-center
@@ -183,7 +185,7 @@ export default function Sidebar() {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                             </svg>
                                         </button>
-                                    </button>
+                                    </div>
                                 );
                             })}
                         </div>
