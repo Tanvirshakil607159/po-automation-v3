@@ -1,12 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0f1117;
-  --foreground: #e5e7eb;
-  --surface: #1a1d27;
-  --surface-hover: #22252f;
-  --border: #2a2d37;
-  --amber-glow: rgba(245, 158, 11, 0.15);
+  --background: #ffffff;
+  --foreground: #1a1a2e;
+  --surface: #f8f9fc;
+  --surface-hover: #f0f1f5;
+  --border: #e2e5ef;
+  --accent: #2563eb;
+  --accent-light: #eff6ff;
 }
 
 @theme inline {
@@ -19,23 +20,26 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar — light theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: #d1d5db;
   border-radius: 99px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #9ca3af;
 }
 
 /* Number input spinners */
@@ -45,13 +49,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 /* Smooth focus transitions */
-input:focus, button:focus-visible {
+input:focus,
+button:focus-visible {
   outline: none;
-}
-
-/* Glassmorphism utility */
-.glass {
-  background: rgba(26, 29, 39, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
