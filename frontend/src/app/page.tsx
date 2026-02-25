@@ -2,13 +2,12 @@
 
 import Sidebar from "@/components/Sidebar";
 import UploadZone from "@/components/UploadZone";
-import ItemTabs from "@/components/ItemTabs";
 import DataTable from "@/components/DataTable";
 import ExportButton from "@/components/ExportButton";
 import { useAppStore } from "@/lib/store";
 
 export default function Home() {
-  const { groupedData, uploadResult, activePO, activeTab, setActivePO, clearUpload } = useAppStore();
+  const { groupedData, uploadResult, activePO, setActivePO, clearUpload } = useAppStore();
   const hasData = groupedData && Object.keys(groupedData.po_groups || {}).length > 0;
   const poNames = hasData ? Object.keys(groupedData.po_groups || {}) : [];
 
@@ -140,30 +139,22 @@ export default function Home() {
               {/* Divider */}
               <div className="border-t border-gray-800/60" />
 
-              {/* Item Tabs — Second Level */}
-              <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest px-1">Item Categories</p>
-                <ItemTabs />
-              </div>
-
-              {/* Active tab info bar */}
-              {activeTab && activePO && groupedData.po_groups[activePO]?.categories[activeTab] && (
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 px-1">
-                  <p className="text-sm text-gray-400">
+              {/* Info bar */}
+              {activePO && (
+                <div className="flex items-center gap-3 px-1">
+                  <p className="text-xs text-gray-400">
                     <span className="text-blue-400 font-semibold">{activePO}</span>
-                    {" → "}
-                    <span className="text-white font-semibold">{activeTab}</span>
                     {" • "}
-                    {groupedData.po_groups[activePO].categories[activeTab].length} rows
+                    <span className="text-gray-500">{Object.keys(groupedData.po_groups[activePO]?.categories || {}).length} categories</span>
                   </p>
                   <div className="flex-1" />
-                  <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-xs text-gray-500">
+                  <div className="flex items-center gap-3 text-[10px] text-gray-500">
                     <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-amber-500/20 border border-amber-500/40" />
+                      <span className="w-2.5 h-2.5 rounded bg-amber-500/20 border border-amber-500/40" />
                       Editable
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-emerald-500/20 border border-emerald-500/40" />
+                      <span className="w-2.5 h-2.5 rounded bg-emerald-500/20 border border-emerald-500/40" />
                       Auto-Calc
                     </span>
                   </div>

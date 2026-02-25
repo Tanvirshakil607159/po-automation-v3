@@ -103,7 +103,7 @@ export const useAppStore = create<AppState>((set) => ({
             for (const [cat, rows] of Object.entries(poData.categories || {})) {
                 initValues[po][cat] = {};
                 for (let i = 0; i < rows.length; i++) {
-                    initValues[po][cat][String(i)] = { consumption: 0, wastage: 5 };
+                    initValues[po][cat][String(i)] = { consumption: 1, wastage: 5 };
                 }
             }
         }
@@ -134,7 +134,7 @@ export const useAppStore = create<AppState>((set) => ({
             if (!updated[po]) updated[po] = {};
             if (!updated[po][category]) updated[po][category] = {};
             if (!updated[po][category][String(rowIndex)]) {
-                updated[po][category][String(rowIndex)] = { consumption: 0, wastage: 5 };
+                updated[po][category][String(rowIndex)] = { consumption: 1, wastage: 5 };
             }
             updated[po][category][String(rowIndex)][field] = value;
             return { consumptionValues: updated };

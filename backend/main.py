@@ -8,7 +8,7 @@ from io import BytesIO
 
 from pdf_parser import extract_tables_from_pdf
 from sorter import group_by_item
-from excel_export import create_export_workbook
+from pdf_export import create_export_pdf
 from database import save_upload, get_all_uploads, get_upload, delete_upload
 
 app = FastAPI(title="PO Automation API", version="3.0")
@@ -90,22 +90,27 @@ async def delete_history_item(upload_id: int):
 class ExportRequest(BaseModel):
     grouped_data: dict
     consumption_values: dict | None = None
+    thread_settings: dict | None = None
     filename: str = "PO_Export"
 
 
 @app.post("/api/export")
-async def export_excel(req: ExportRequest):
-    """Generate and return a multi-sheet Excel file."""
+async def export_pdf(req: ExportRequest):
+    """Generate and return a PDF report."""
     try:
-        excel_bytes = create_export_workbook(req.grouped_data, req.consumption_values)
+        pdf_bytes = create_export_pdf(
+            req.grouped_data,
+            req.consumption_values,
+            req.thread_settings,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
     return StreamingResponse(
-        BytesIO(excel_bytes),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        BytesIO(pdf_bytes),
+        media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="{req.filename}.xlsx"'
+            "Content-Disposition": f'attachment; filename="{req.filename}.pdf"'
         },
     )
 

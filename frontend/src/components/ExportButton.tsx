@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { exportExcel } from "@/lib/api";
+import { exportPDF } from "@/lib/api";
 
 export default function ExportButton() {
     const { groupedData, consumptionValues, uploadResult } = useAppStore();
@@ -14,7 +14,30 @@ export default function ExportButton() {
         setExporting(true);
         try {
             const filename = uploadResult?.filename?.replace(".pdf", "") || "PO_Export";
-            await exportExcel(groupedData as any, consumptionValues, filename);
+
+            // Collect per-sub-group thread settings from DOM inputs
+            // Each sub-group has: thread-count-{subName} and cone-length-{subName}
+            const threadSettingsMap: Record<string, { count: string; cone_length: number }> = {};
+
+            const countSelects = document.querySelectorAll<HTMLSelectElement>('[id^="thread-count-"]');
+            countSelects.forEach((sel) => {
+                const subKey = sel.id.replace("thread-count-", "");
+                const coneInput = document.getElementById(`cone-length-${subKey}`) as HTMLInputElement | null;
+                const coneVal = coneInput ? parseFloat(coneInput.value) || 0 : 0;
+                if (coneVal > 0) {
+                    threadSettingsMap[subKey] = {
+                        count: sel.value,
+                        cone_length: coneVal,
+                    };
+                }
+            });
+
+            await exportPDF(
+                groupedData as any,
+                consumptionValues,
+                filename,
+                Object.keys(threadSettingsMap).length > 0 ? threadSettingsMap : null,
+            );
         } catch (err) {
             console.error("Export failed:", err);
             alert("Export failed. Please try again.");
@@ -44,8 +67,8 @@ export default function ExportButton() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                             d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <span className="hidden sm:inline">Export Excel</span>
-                    <span className="sm:hidden">Export</span>
+                    <span className="hidden sm:inline">Export PDF</span>
+                    <span className="sm:hidden">PDF</span>
                 </>
             )}
         </button>

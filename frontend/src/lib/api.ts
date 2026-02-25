@@ -37,10 +37,11 @@ export async function deleteHistoryItem(id: number) {
     return res.json();
 }
 
-export async function exportExcel(
+export async function exportPDF(
     groupedData: Record<string, unknown>,
     consumptionValues: Record<string, unknown> | null,
-    filename: string
+    filename: string,
+    threadSettings?: Record<string, { count: string; cone_length: number }> | null,
 ) {
     const res = await fetch(`${API_BASE}/api/export`, {
         method: "POST",
@@ -48,6 +49,7 @@ export async function exportExcel(
         body: JSON.stringify({
             grouped_data: groupedData,
             consumption_values: consumptionValues,
+            thread_settings: threadSettings || null,
             filename,
         }),
     });
@@ -58,7 +60,7 @@ export async function exportExcel(
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${filename}.xlsx`;
+    a.download = `${filename}.pdf`;
     document.body.appendChild(a);
     a.click();
     a.remove();

@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
         return new NextResponse(blob, {
             status: 200,
             headers: {
-                "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "Content-Disposition": res.headers.get("Content-Disposition") || 'attachment; filename="export.xlsx"',
+                "Content-Type": "application/pdf",
+                "Content-Disposition": res.headers.get("Content-Disposition") || 'attachment; filename="export.pdf"',
             },
         });
     } catch {
