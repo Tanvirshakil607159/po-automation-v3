@@ -298,44 +298,38 @@ def group_by_item(rows: list[dict]) -> dict:
             skipped += 1
             continue
 
-        # Sewing thread items → keep main category, extract Pantone for sub-grouping
-        is_thread = _is_thread_item(cat_val)
-        pantone_key = ""
-        if is_thread:
-            # Use a unified main category name for all thread variants
+        # Unify sewing thread variants under one main category name
+        if _is_thread_item(cat_val):
             cat_val = "Sewing Thread"
-            pantone_val = ""
-            if pantone_col:
-                pv = str(row.get(pantone_col, "")).strip()
-                if pv and pv.lower() not in ("", "n/a", "na", "-", "none"):
-                    pantone_val = pv
-            if not pantone_val:
-                for key, value in row.items():
-                    vs = str(value).strip()
-                    if re.search(r'pantone|panton|pms', vs, re.IGNORECASE):
-                        pantone_val = vs
-                        break
-            if pantone_val:
-                pantone_key = _dedup_pantone(pantone_val)
-            else:
-                pantone_key = "Other"
+
+        # Extract Pantone code for sub-grouping (applies to ALL categories)
+        pantone_val = ""
+        if pantone_col:
+            pv = str(row.get(pantone_col, "")).strip()
+            if pv and pv.lower() not in ("", "n/a", "na", "-", "none"):
+                pantone_val = pv
+        if not pantone_val:
+            # Scan all cell values for pantone-like patterns
+            for key, value in row.items():
+                vs = str(value).strip()
+                if re.search(r'pantone|panton|pms', vs, re.IGNORECASE):
+                    pantone_val = vs
+                    break
+        if pantone_val:
+            pantone_key = _dedup_pantone(pantone_val)
+        else:
+            pantone_key = "Other"
 
         if po_val not in po_groups:
             po_groups[po_val] = {}
 
-        if is_thread:
-            # Thread categories use sub-groups by Pantone
-            if cat_val not in po_groups[po_val]:
-                po_groups[po_val][cat_val] = {"_sub_groups": {}}
-            sub = po_groups[po_val][cat_val]["_sub_groups"]
-            if pantone_key not in sub:
-                sub[pantone_key] = []
-            sub[pantone_key].append(row)
-        else:
-            # Normal categories — flat list
-            if cat_val not in po_groups[po_val]:
-                po_groups[po_val][cat_val] = []
-            po_groups[po_val][cat_val].append(row)
+        # ALL categories use sub-groups by Pantone
+        if cat_val not in po_groups[po_val]:
+            po_groups[po_val][cat_val] = {"_sub_groups": {}}
+        sub = po_groups[po_val][cat_val]["_sub_groups"]
+        if pantone_key not in sub:
+            sub[pantone_key] = []
+        sub[pantone_key].append(row)
 
         all_categories_set.add(cat_val)
 

@@ -267,7 +267,7 @@ def create_export_pdf(
                         rows, base_headers, qty_col_idx, display_headers,
                         header_cell_style, cell_style, cell_left_style,
                         consumption_values, po_name, f"{cat_name}::{sub_name}",
-                        available, is_thread=True,
+                        available, is_thread=is_thread,
                         thread_count=sub_count, cone_length=sub_cone,
                     )
                     section_elements.append(Spacer(1, 4))

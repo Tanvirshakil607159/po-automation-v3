@@ -100,10 +100,23 @@ export const useAppStore = create<AppState>((set) => ({
         const initValues: ConsumptionValues = {};
         for (const [po, poData] of Object.entries(poGroups)) {
             initValues[po] = {};
-            for (const [cat, rows] of Object.entries(poData.categories || {})) {
-                initValues[po][cat] = {};
-                for (let i = 0; i < rows.length; i++) {
-                    initValues[po][cat][String(i)] = { consumption: 1, wastage: 5 };
+            for (const [cat, catData] of Object.entries((poData as any).categories || {})) {
+                const data = catData as any;
+                if (data && typeof data === "object" && "_sub_groups" in data) {
+                    // All categories now use sub-groups
+                    for (const [subName, subRows] of Object.entries(data._sub_groups || {})) {
+                        const key = `${cat}::${subName}`;
+                        initValues[po][key] = {};
+                        for (let i = 0; i < (subRows as any[]).length; i++) {
+                            initValues[po][key][String(i)] = { consumption: 1, wastage: 5 };
+                        }
+                    }
+                } else if (Array.isArray(data)) {
+                    // Fallback for flat arrays (legacy safety)
+                    initValues[po][cat] = {};
+                    for (let i = 0; i < data.length; i++) {
+                        initValues[po][cat][String(i)] = { consumption: 1, wastage: 5 };
+                    }
                 }
             }
         }

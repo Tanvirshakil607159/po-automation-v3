@@ -245,22 +245,22 @@ export default function DataTable() {
                         </div>
 
                         {hasSubGroups ? (
-                            /* Thread: render sub-groups by Pantone */
+                            /* Render sub-groups by Pantone for ALL categories */
                             <div className="divide-y divide-gray-700/30">
                                 {Object.entries(catData._sub_groups).map(([subName, subRows]: [string, any]) => (
                                     <div key={subName}>
                                         {/* Sub-group header */}
-                                        <div className="flex items-center gap-2 px-4 py-2 bg-purple-900/15 border-b border-gray-700/30">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-purple-400/60" />
-                                            <span className="text-xs font-medium text-purple-300">{subName}</span>
+                                        <div className={`flex items-center gap-2 px-4 py-2 border-b border-gray-700/30 ${isThread ? "bg-purple-900/15" : "bg-amber-900/10"}`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${isThread ? "bg-purple-400/60" : "bg-amber-400/60"}`} />
+                                            <span className={`text-xs font-medium ${isThread ? "text-purple-300" : "text-amber-300"}`}>{subName}</span>
                                             <span className="text-[10px] text-gray-600">{subRows.length} items</span>
                                         </div>
-                                        {renderTable(subRows, catName, subName, true)}
+                                        {renderTable(subRows, catName, subName, isThread)}
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            /* Normal flat category */
+                            /* Fallback for flat data (shouldn't happen now, safety) */
                             Array.isArray(catData) && renderTable(catData, catName, "_flat", false)
                         )}
                     </div>
