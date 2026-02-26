@@ -4,6 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import UploadZone from "@/components/UploadZone";
 import DataTable from "@/components/DataTable";
 import ExportButton from "@/components/ExportButton";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useAppStore } from "@/lib/store";
 
 export default function Home() {
@@ -12,34 +13,32 @@ export default function Home() {
   const poNames = hasData ? Object.keys(groupedData.po_groups || {}) : [];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f4f1ec]">
+    <div className="flex h-screen overflow-hidden bg-[#fafafa] dark:bg-[#09090b]">
       <Sidebar />
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex items-center justify-between px-5 sm:px-8 py-4 bg-[#faf8f4] border-b border-[#e6e0d6]">
+        <header className="flex items-center justify-between px-5 sm:px-8 py-4 bg-white dark:bg-[#18181b] border-b border-[#e5e5e5] dark:border-[#27272a]">
           <div className="pl-10 lg:pl-0 min-w-0">
             {hasData ? (
               <div>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full bg-[#6a9a7b] animate-pulse" />
-                  <h1 className="text-[15px] font-semibold text-[#3b3730] truncate">{uploadResult?.filename}</h1>
-                </div>
-                <p className="text-[12px] text-[#a09888] mt-0.5 font-medium">
+                <h1 className="text-[15px] font-semibold text-[#18181b] dark:text-[#fafafa] truncate">{uploadResult?.filename}</h1>
+                <p className="text-[12px] text-[#a1a1aa] dark:text-[#71717a] mt-0.5">
                   {poNames.length} PO{poNames.length > 1 ? "s" : ""} · {uploadResult?.total_rows} rows
                 </p>
               </div>
             ) : (
-              <h1 className="text-[15px] font-semibold text-[#3b3730]">Purchase Order Processor</h1>
+              <h1 className="text-[15px] font-semibold text-[#18181b] dark:text-[#fafafa]">Purchase Order Processor</h1>
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            <ThemeToggle />
             {hasData && (
               <>
                 <ExportButton />
                 <button
                   onClick={clearUpload}
                   className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium
-                    bg-[#ede8e0] text-[#7a7265] border border-[#e6e0d6] hover:bg-[#e6e0d6] hover:text-[#3b3730] transition-all"
+                    bg-[#f5f5f5] dark:bg-[#27272a] text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#e5e5e5] dark:hover:bg-[#3f3f46] hover:text-[#18181b] dark:hover:text-[#fafafa] transition-colors"
                   id="new-upload-btn"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,7 +48,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={clearUpload}
-                  className="sm:hidden p-2 rounded-lg bg-[#ede8e0] text-[#7a7265] border border-[#e6e0d6] hover:bg-[#e6e0d6] transition-all"
+                  className="sm:hidden p-2 rounded-lg bg-[#f5f5f5] dark:bg-[#27272a] text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#e5e5e5] dark:hover:bg-[#3f3f46] transition-colors"
                   id="new-upload-btn-mobile"
                   aria-label="New Upload"
                 >
@@ -65,46 +64,28 @@ export default function Home() {
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {!hasData ? (
-            <div className="max-w-xl mx-auto mt-16 sm:mt-24 px-4">
+            <div className="max-w-md mx-auto mt-20 sm:mt-32 px-4">
               <div className="text-center mb-10">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#5b7a6a] shadow-lg mb-5">
-                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <p className="text-[11px] font-semibold text-[#5b7a6a] uppercase tracking-[0.15em] mb-3">
+                <p className="text-[11px] font-semibold text-[#a1a1aa] dark:text-[#71717a] uppercase tracking-[0.15em] mb-4">
                   K.A. Design Accessories Ltd.
                 </p>
-                <h2 className="text-2xl sm:text-[28px] font-bold text-[#3b3730] leading-tight mb-3">
+                <h2 className="text-2xl sm:text-[28px] font-bold text-[#18181b] dark:text-[#fafafa] leading-tight mb-3">
                   PO to Item-Wise Sheets
                 </h2>
-                <p className="text-[14px] text-[#a09888] leading-relaxed max-w-sm mx-auto">
+                <p className="text-[14px] text-[#71717a] dark:text-[#a1a1aa] leading-relaxed max-w-sm mx-auto">
                   Upload your Purchase Order PDF — we&apos;ll group by PO, sort by item, and calculate consumption.
                 </p>
               </div>
               <UploadZone />
-              <div className="grid grid-cols-3 gap-3 mt-8">
-                {[
-                  { icon: "📄", title: "Smart Parsing", desc: "Auto-detect tables" },
-                  { icon: "🔀", title: "PO Sorting", desc: "Group & categorize" },
-                  { icon: "🧮", title: "Calculator", desc: "Cons + Wastage" },
-                ].map((f) => (
-                  <div key={f.title}
-                    className="text-center p-4 rounded-xl bg-[#fffefb] border border-[#eee9e1] shadow-sm hover:shadow-md transition-shadow cursor-default"
-                  >
-                    <span className="text-xl">{f.icon}</span>
-                    <p className="text-[12px] font-semibold text-[#3b3730] mt-2">{f.title}</p>
-                    <p className="text-[11px] text-[#a09888] mt-0.5">{f.desc}</p>
-                  </div>
-                ))}
-              </div>
+              <p className="text-center text-[11px] text-[#a1a1aa] dark:text-[#52525b] mt-6">
+                Smart Parsing · PO Sorting · Consumption Calculator
+              </p>
             </div>
           ) : (
             <div className="p-4 sm:p-6 space-y-4">
               {/* PO Tabs */}
               <div>
-                <p className="text-[11px] font-semibold text-[#a09888] uppercase tracking-[0.12em] mb-2 px-0.5">Purchase Orders</p>
+                <p className="text-[11px] font-medium text-[#a1a1aa] dark:text-[#71717a] uppercase tracking-[0.1em] mb-2">Purchase Orders</p>
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" id="po-tabs">
                   {poNames.map((po, idx) => {
                     const isActive = po === activePO;
@@ -113,20 +94,16 @@ export default function Home() {
                       <button
                         key={po}
                         onClick={() => setActivePO(po)}
-                        className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] font-medium whitespace-nowrap transition-all
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] font-medium whitespace-nowrap transition-colors
                           ${isActive
-                            ? "bg-[#5b7a6a] text-white shadow-md"
-                            : "bg-[#fffefb] text-[#7a7265] border border-[#eee9e1] shadow-sm hover:bg-[#f4f1ec]"
+                            ? "bg-[#18181b] dark:bg-[#fafafa] text-white dark:text-[#09090b]"
+                            : "bg-[#f5f5f5] dark:bg-[#27272a] text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#e5e5e5] dark:hover:bg-[#3f3f46] hover:text-[#18181b] dark:hover:text-[#fafafa]"
                           }`}
                         id={`po-tab-${idx}`}
                       >
-                        <svg className="w-3.5 h-3.5 hidden sm:block opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
                         {po}
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold
-                          ${isActive ? "bg-white/20" : "bg-[#f4f1ec] text-[#a09888]"}`}>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium
+                          ${isActive ? "bg-white/15 dark:bg-black/10 text-white/80 dark:text-[#09090b]/70" : "bg-[#e5e5e5] dark:bg-[#3f3f46] text-[#a1a1aa]"}`}>
                           {catCount}
                         </span>
                       </button>
@@ -137,22 +114,12 @@ export default function Home() {
 
               {/* Info */}
               {activePO && (
-                <div className="flex items-center justify-between px-1">
-                  <p className="text-[12px] text-[#a09888]">
-                    <span className="font-semibold text-[#5b7a6a]">{activePO}</span>
-                    <span className="mx-1.5 text-[#e6e0d6]">·</span>
+                <div className="flex items-center justify-between px-0.5">
+                  <p className="text-[12px] text-[#a1a1aa] dark:text-[#71717a]">
+                    <span className="font-semibold text-[#18181b] dark:text-[#fafafa]">{activePO}</span>
+                    <span className="mx-1.5 text-[#d4d4d8] dark:text-[#3f3f46]">·</span>
                     {Object.keys(groupedData.po_groups[activePO]?.categories || {}).length} categories
                   </p>
-                  <div className="hidden sm:flex items-center gap-4 text-[11px] text-[#a09888]">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-sm bg-[#faf3ec] border border-[#c4956a]" />
-                      Editable
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-sm bg-[#edf5f0] border border-[#6a9a7b]" />
-                      Auto-Calc
-                    </span>
-                  </div>
                 </div>
               )}
 

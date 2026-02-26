@@ -14,7 +14,7 @@ export default function ItemTabs() {
     if (categories.length === 0) return null;
 
     return (
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin scrollbar-thumb-gray-600" id="item-tabs">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" id="item-tabs">
             {categories.map((cat, idx) => {
                 const isActive = cat === activeTab;
                 const count = groupedData.po_groups[activePO].categories[cat].length;
@@ -23,19 +23,19 @@ export default function ItemTabs() {
                     <button
                         key={cat}
                         onClick={() => setActiveTab(cat)}
-                        className={`group relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-200
-              ${isActive
-                                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-gray-900 shadow-lg shadow-amber-500/20"
-                                : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+                        className={`group flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-[13px] font-medium whitespace-nowrap transition-colors
+                          ${isActive
+                                ? "bg-[#18181b] dark:bg-[#fafafa] text-white dark:text-[#09090b]"
+                                : "bg-[#f5f5f5] dark:bg-[#27272a] text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#e5e5e5] dark:hover:bg-[#3f3f46] hover:text-[#18181b] dark:hover:text-[#fafafa]"
                             }`}
                         id={`tab-${idx}`}
                     >
                         <span>{cat}</span>
                         <span
-                            className={`inline-flex items-center justify-center text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 rounded-full
-                ${isActive
-                                    ? "bg-gray-900/20 text-gray-900"
-                                    : "bg-gray-700 text-gray-400 group-hover:bg-gray-600"
+                            className={`inline-flex items-center justify-center text-[10px] px-1.5 py-0.5 rounded-full
+                              ${isActive
+                                    ? "bg-white/15 dark:bg-black/10 text-white/80 dark:text-[#09090b]/70"
+                                    : "bg-[#e5e5e5] dark:bg-[#3f3f46] text-[#a1a1aa] dark:text-[#71717a]"
                                 }`}
                         >
                             {count}

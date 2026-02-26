@@ -1,31 +1,63 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 @theme inline {
-  --color-background: #f4f1ec;
-  --color-foreground: #3b3730;
+  --color-background: #fafafa;
+  --color-foreground: #18181b;
   --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
 }
 
 body {
-  background: #f4f1ec;
-  color: #3b3730;
+  background: #fafafa;
+  color: #18181b;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #d4cdc3; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #b8b0a4; }
+.dark body {
+  background: #09090b;
+  color: #fafafa;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
 
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   opacity: 0;
   -webkit-appearance: none;
 }
+
 input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;
 }
 
-input:focus, select:focus, button:focus-visible {
+input:focus,
+select:focus,
+button:focus-visible {
   outline: none;
 }

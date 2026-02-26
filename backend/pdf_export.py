@@ -273,6 +273,67 @@ def create_export_pdf(
                     section_elements.append(Spacer(1, 4))
                     elements.append(KeepTogether(section_elements))
 
+                # ── All Threads Grand Summary ─────────────────────────
+                if is_thread:
+                    all_thread_total = 0.0
+                    all_thread_weight_lbs = 0
+
+                    for sub_name, rows in sub_groups.items():
+                        sub_total = 0.0
+                        for row_idx, row_data in enumerate(rows):
+                            order_qty = 0.0
+                            if qty_col_idx >= 0:
+                                try:
+                                    order_qty = float(str(row_data.get(base_headers[qty_col_idx], "0")).replace(",", ""))
+                                except (ValueError, TypeError):
+                                    order_qty = 0.0
+
+                            cons_data = {}
+                            if consumption_values:
+                                po_cons = consumption_values.get(po_name, {})
+                                cat_cons = po_cons.get(f"{cat_name}::{sub_name}", {}) if isinstance(po_cons, dict) else {}
+                                cons_data = cat_cons.get(str(row_idx), {}) if isinstance(cat_cons, dict) else {}
+
+                            consumption = float(cons_data.get("consumption", 1))
+                            wastage = float(cons_data.get("wastage", 5))
+                            sub_total += (order_qty * consumption) * (1 + wastage / 100)
+
+                        all_thread_total += sub_total
+
+                        sub_ts = thread_settings_map.get(sub_name, {})
+                        sub_count = sub_ts.get("count", "50/2") if sub_ts else "50/2"
+                        sub_cone = float(sub_ts.get("cone_length", 0)) if sub_ts else 0.0
+                        if sub_cone > 0 and sub_total > 0:
+                            divisor = THREAD_DIVISORS.get(sub_count, 19202.4)
+                            all_thread_weight_lbs += math.ceil(sub_total * (sub_cone / divisor))
+
+                    if all_thread_total > 0:
+                        summary_parts = [
+                            f"<b>🧵 ALL THREADS SUMMARY</b>  |  "
+                            f"Total Req: <b>{all_thread_total:,.2f}</b>"
+                        ]
+                        if all_thread_weight_lbs > 0:
+                            weight_kg = math.ceil(all_thread_weight_lbs * 0.453592)
+                            summary_parts.append(
+                                f"  |  Total Weight: <b>{all_thread_weight_lbs:,} lbs</b> ({weight_kg:,} kg)"
+                            )
+
+                        summary_style = ParagraphStyle(
+                            "ThreadSummary", parent=cell_left_style,
+                            fontSize=7, leading=10,
+                        )
+                        summary_data = [[Paragraph("".join(summary_parts), summary_style)]]
+                        summary_tbl = Table(summary_data, colWidths=[available])
+                        summary_tbl.setStyle(TableStyle([
+                            ("BACKGROUND", (0, 0), (-1, -1), WHITE),
+                            ("BOX", (0, 0), (-1, -1), 1, BLACK),
+                            ("TOPPADDING", (0, 0), (-1, -1), 4),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                        ]))
+                        elements.append(summary_tbl)
+                        elements.append(Spacer(1, 6))
+
             elif isinstance(cat_data, list):
                 # ── Normal flat category ───────────────────────────────
                 rows = cat_data

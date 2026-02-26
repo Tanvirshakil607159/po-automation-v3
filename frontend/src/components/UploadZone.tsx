@@ -26,9 +26,9 @@ export default function UploadZone() {
 
     return (
         <div
-            className={`relative rounded-2xl p-8 sm:p-10 text-center transition-all duration-300 cursor-pointer shadow-sm
-                ${dragOver ? "border-2 border-[#5b7a6a] bg-[#eef3f0] scale-[1.01]"
-                    : "border-2 border-dashed border-[#e6e0d6] bg-[#fffefb] hover:border-[#5b7a6a]/40 hover:bg-[#f8f6f2]"}
+            className={`relative rounded-lg p-8 sm:p-10 text-center transition-all cursor-pointer
+                ${dragOver ? "border-2 border-[#2563eb] bg-[#eff6ff] dark:bg-[#1e3a5f]"
+                    : "border-2 border-dashed border-[#d4d4d8] dark:border-[#3f3f46] bg-white dark:bg-[#18181b] hover:border-[#a1a1aa] dark:hover:border-[#52525b]"}
                 ${isUploading ? "pointer-events-none opacity-60" : ""}`}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
@@ -41,34 +41,27 @@ export default function UploadZone() {
 
             {isUploading ? (
                 <div className="py-2">
-                    <div className="relative inline-flex items-center justify-center w-12 h-12 mb-4">
-                        <div className="absolute inset-0 rounded-full border-2 border-[#eee9e1]" />
-                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#5b7a6a] animate-spin" />
-                        <svg className="w-5 h-5 text-[#5b7a6a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
+                    <div className="inline-flex items-center justify-center w-10 h-10 mb-4">
+                        <div className="w-8 h-8 rounded-full animate-spin border-2 border-[#e5e5e5] dark:border-[#3f3f46] border-t-[#18181b] dark:border-t-[#fafafa]" />
                     </div>
-                    <p className="text-[14px] font-semibold text-[#3b3730]">Processing your PDF...</p>
-                    <p className="text-[12px] text-[#a09888] mt-1">Extracting tables & sorting items</p>
+                    <p className="text-[14px] font-medium text-[#18181b] dark:text-[#fafafa]">Processing your PDF...</p>
+                    <p className="text-[12px] text-[#a1a1aa] dark:text-[#71717a] mt-1">Extracting tables & sorting items</p>
                 </div>
             ) : (
                 <div className="py-2">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#f4f1ec] border border-[#eee9e1] mb-4">
-                        <svg className="w-6 h-6 text-[#a09888]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                    </div>
-                    <p className="text-[14px] font-semibold text-[#3b3730]">Drop your PO file here</p>
-                    <p className="text-[12px] text-[#a09888] mt-1.5">
-                        or <span className="font-medium text-[#5b7a6a]">browse files</span> · PDF only
+                    <svg className="w-6 h-6 mx-auto mb-4 text-[#a1a1aa] dark:text-[#52525b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p className="text-[14px] font-medium text-[#18181b] dark:text-[#fafafa]">Drop your PO file here</p>
+                    <p className="text-[12px] text-[#a1a1aa] dark:text-[#71717a] mt-1.5">
+                        or <span className="text-[#2563eb] dark:text-[#60a5fa]">browse files</span> · PDF only
                     </p>
                 </div>
             )}
 
             {error && (
-                <div className="mt-4 mx-auto max-w-xs px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-[12px] font-medium">
+                <div className="mt-4 mx-auto max-w-xs px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-[12px] font-medium">
                     {error}
                 </div>
             )}

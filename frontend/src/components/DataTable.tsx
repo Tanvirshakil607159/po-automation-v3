@@ -79,13 +79,13 @@ export default function DataTable() {
                     <table className="w-full min-w-[600px]">
                         <thead>
                             <tr>
-                                <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-[#a09888] uppercase tracking-wider bg-[#f4f1ec] border-b border-[#eee9e1]">#</th>
+                                <th className="px-3 py-2.5 text-left text-[10px] font-medium text-[#a1a1aa] dark:text-[#52525b] uppercase tracking-wider bg-[#fafafa] dark:bg-[#09090b] border-b border-[#e5e5e5] dark:border-[#27272a]">#</th>
                                 {headers.map((h: string) => (
-                                    <th key={h} className="px-3 py-2.5 text-left text-[10px] font-semibold text-[#a09888] uppercase tracking-wider bg-[#f4f1ec] border-b border-[#eee9e1] whitespace-nowrap">{h}</th>
+                                    <th key={h} className="px-3 py-2.5 text-left text-[10px] font-medium text-[#a1a1aa] dark:text-[#52525b] uppercase tracking-wider bg-[#fafafa] dark:bg-[#09090b] border-b border-[#e5e5e5] dark:border-[#27272a] whitespace-nowrap">{h}</th>
                                 ))}
-                                <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-[#c4956a] uppercase tracking-wider bg-[#faf3ec] border-b border-[#ead9c8] whitespace-nowrap">Cons/Unit</th>
-                                <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-[#c4956a] uppercase tracking-wider bg-[#faf3ec] border-b border-[#ead9c8] whitespace-nowrap">Wastage %</th>
-                                <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-[#6a9a7b] uppercase tracking-wider bg-[#edf5f0] border-b border-[#c8ddd0] whitespace-nowrap">Total Req.</th>
+                                <th className="px-3 py-2.5 text-center text-[10px] font-medium text-[#d97706] dark:text-[#fbbf24] uppercase tracking-wider bg-[#fafafa] dark:bg-[#09090b] border-b border-[#e5e5e5] dark:border-[#27272a] whitespace-nowrap">Cons/Unit</th>
+                                <th className="px-3 py-2.5 text-center text-[10px] font-medium text-[#d97706] dark:text-[#fbbf24] uppercase tracking-wider bg-[#fafafa] dark:bg-[#09090b] border-b border-[#e5e5e5] dark:border-[#27272a] whitespace-nowrap">Wastage %</th>
+                                <th className="px-3 py-2.5 text-center text-[10px] font-medium text-[#16a34a] dark:text-[#4ade80] uppercase tracking-wider bg-[#fafafa] dark:bg-[#09090b] border-b border-[#e5e5e5] dark:border-[#27272a] whitespace-nowrap">Total Req.</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -97,72 +97,72 @@ export default function DataTable() {
                                 const consKey = isFlat ? catKey : `${catKey}::${subKey}`;
 
                                 return (
-                                    <tr key={rowIdx} className="border-b border-[#eee9e1] hover:bg-[#f0ede8] transition-colors">
-                                        <td className="px-3 py-2 text-[11px] text-[#a09888] font-medium">{rowIdx + 1}</td>
+                                    <tr key={rowIdx} className="border-b border-[#f5f5f5] dark:border-[#1a1a1e] hover:bg-[#fafafa] dark:hover:bg-[#1a1a1e] transition-colors">
+                                        <td className="px-3 py-2 text-[11px] text-[#a1a1aa] dark:text-[#52525b]">{rowIdx + 1}</td>
                                         {headers.map((h: string) => (
-                                            <td key={h} className="px-3 py-2 text-[12px] text-[#7a7265] whitespace-nowrap">{row[h] || "—"}</td>
+                                            <td key={h} className="px-3 py-2 text-[12px] text-[#52525b] dark:text-[#a1a1aa] whitespace-nowrap">{row[h] || "—"}</td>
                                         ))}
-                                        <td className="px-2 py-1.5 bg-[#faf3ec]/50">
+                                        <td className="px-2 py-1.5">
                                             <input type="number" min="0" step="0.01" value={cons}
                                                 onChange={(e) => setConsumption(activePO, consKey, rowIdx, "consumption", parseFloat(e.target.value) || 0)}
-                                                className="w-16 px-2 py-1.5 rounded-md bg-[#fffefb] border border-[#e6e0d6] text-[#3b3730] text-center text-[12px] font-medium
-                                                    focus:border-[#5b7a6a] focus:ring-2 focus:ring-[#5b7a6a]/10 transition-all"
+                                                className="w-16 px-2 py-1.5 rounded-md bg-white dark:bg-[#09090b] border border-[#e5e5e5] dark:border-[#27272a] text-[#18181b] dark:text-[#fafafa] text-center text-[12px]
+                                                    focus:border-[#2563eb] dark:focus:border-[#60a5fa] focus:ring-2 focus:ring-[#2563eb]/10 dark:focus:ring-[#60a5fa]/10 transition-all"
                                                 id={`cons-${catKey}-${subKey}-${rowIdx}`} />
                                         </td>
-                                        <td className="px-2 py-1.5 bg-[#faf3ec]/50">
+                                        <td className="px-2 py-1.5">
                                             <input type="number" min="0" max="100" step="0.5" value={wastage}
                                                 onChange={(e) => setConsumption(activePO, consKey, rowIdx, "wastage", parseFloat(e.target.value) || 0)}
-                                                className="w-16 px-2 py-1.5 rounded-md bg-[#fffefb] border border-[#e6e0d6] text-[#3b3730] text-center text-[12px] font-medium
-                                                    focus:border-[#5b7a6a] focus:ring-2 focus:ring-[#5b7a6a]/10 transition-all"
+                                                className="w-16 px-2 py-1.5 rounded-md bg-white dark:bg-[#09090b] border border-[#e5e5e5] dark:border-[#27272a] text-[#18181b] dark:text-[#fafafa] text-center text-[12px]
+                                                    focus:border-[#2563eb] dark:focus:border-[#60a5fa] focus:ring-2 focus:ring-[#2563eb]/10 dark:focus:ring-[#60a5fa]/10 transition-all"
                                                 id={`waste-${catKey}-${subKey}-${rowIdx}`} />
                                         </td>
-                                        <td className="px-3 py-2 text-center bg-[#edf5f0]/50">
-                                            <span className="text-[12px] font-semibold text-[#6a9a7b]">{total > 0 ? total.toFixed(2) : "—"}</span>
+                                        <td className="px-3 py-2 text-center">
+                                            <span className="text-[12px] font-semibold text-[#16a34a] dark:text-[#4ade80]">{total > 0 ? total.toFixed(2) : "—"}</span>
                                         </td>
                                     </tr>
                                 );
                             })}
                         </tbody>
                         <tfoot>
-                            <tr className="bg-[#f4f1ec] border-t border-[#e6e0d6]">
-                                <td className="px-3 py-2.5 text-[11px] font-bold text-[#a09888]">Σ</td>
+                            <tr className="bg-[#fafafa] dark:bg-[#09090b] border-t border-[#e5e5e5] dark:border-[#27272a]">
+                                <td className="px-3 py-2.5 text-[11px] font-bold text-[#a1a1aa] dark:text-[#52525b]">Σ</td>
                                 {headers.map((h: string, i: number) => (
                                     <td key={h} className="px-3 py-2.5 text-[12px] font-bold">
-                                        {i === qtyColIndex ? <span className="text-[#5b7a6a]">{grandQty.toLocaleString()}</span> : ""}
+                                        {i === qtyColIndex ? <span className="text-[#18181b] dark:text-[#fafafa]">{grandQty.toLocaleString()}</span> : ""}
                                     </td>
                                 ))}
-                                <td colSpan={2} className="px-3 py-2.5 text-right text-[10px] font-bold text-[#a09888] uppercase tracking-wider">Grand Total</td>
-                                <td className="px-3 py-2.5 text-center text-[13px] font-bold text-[#6a9a7b]">{grandTotal > 0 ? grandTotal.toFixed(2) : "—"}</td>
+                                <td colSpan={2} className="px-3 py-2.5 text-right text-[10px] font-bold text-[#a1a1aa] dark:text-[#52525b] uppercase tracking-wider">Grand Total</td>
+                                <td className="px-3 py-2.5 text-center text-[13px] font-bold text-[#16a34a] dark:text-[#4ade80]">{grandTotal > 0 ? grandTotal.toFixed(2) : "—"}</td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
 
                 {isThread && (
-                    <div className="px-4 py-3 bg-[#eef3f0] border-t border-[#d6e5dc]">
+                    <div className="px-4 py-3 bg-[#f0fdf4] dark:bg-[#052e16] border-t border-[#e5e5e5] dark:border-[#27272a]">
                         <div className="flex flex-wrap items-center gap-3">
-                            <span className="text-[11px] font-semibold text-[#5b7a6a] uppercase tracking-wide">🧵 Weight</span>
-                            <div className="h-4 w-px bg-[#d6e5dc]" />
+                            <span className="text-[11px] font-semibold text-[#16a34a] dark:text-[#4ade80] uppercase tracking-wide">🧵 Weight</span>
+                            <div className="h-4 w-px bg-[#e5e5e5] dark:bg-[#27272a]" />
                             <div className="flex items-center gap-1.5">
-                                <label className="text-[10px] text-[#a09888] font-medium">Count</label>
+                                <label className="text-[10px] text-[#a1a1aa] dark:text-[#52525b]">Count</label>
                                 <select value={ts.count} onChange={(e) => updateTS(subKey, "count", e.target.value)}
-                                    className="px-2 py-1 rounded-md bg-[#fffefb] border border-[#d6e5dc] text-[#3b3730] text-[12px] font-medium cursor-pointer"
+                                    className="px-2 py-1 rounded-md bg-white dark:bg-[#09090b] border border-[#e5e5e5] dark:border-[#27272a] text-[#18181b] dark:text-[#fafafa] text-[12px] cursor-pointer"
                                     id={`thread-count-${subKey}`}>
                                     <option value="50/2">50/2</option>
                                     <option value="40/2">40/2</option>
                                 </select>
                             </div>
                             <div className="flex items-center gap-1.5">
-                                <label className="text-[10px] text-[#a09888] font-medium">Cone (m)</label>
+                                <label className="text-[10px] text-[#a1a1aa] dark:text-[#52525b]">Cone (m)</label>
                                 <input type="number" min="0" step="100" value={ts.coneLength || ""} placeholder="5000"
                                     onChange={(e) => updateTS(subKey, "coneLength", parseFloat(e.target.value) || 0)}
-                                    className="w-20 px-2 py-1 rounded-md bg-[#fffefb] border border-[#d6e5dc] text-[#3b3730] text-[12px] font-medium placeholder:text-[#d4cdc3]"
+                                    className="w-20 px-2 py-1 rounded-md bg-white dark:bg-[#09090b] border border-[#e5e5e5] dark:border-[#27272a] text-[#18181b] dark:text-[#fafafa] text-[12px] placeholder:text-[#d4d4d8] dark:placeholder:text-[#3f3f46]"
                                     id={`cone-length-${subKey}`} />
                             </div>
                             {threadWeight > 0 && (
-                                <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#fffefb] border border-[#d6e5dc] shadow-sm">
-                                    <span className="text-[12px] font-bold text-[#5b7a6a]" id={`thread-weight-${subKey}`}>{threadWeight} lbs</span>
-                                    <span className="text-[10px] text-[#a09888]">({Math.ceil(threadWeight * 0.453592)} kg)</span>
+                                <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-[#09090b] border border-[#e5e5e5] dark:border-[#27272a]">
+                                    <span className="text-[12px] font-bold text-[#16a34a] dark:text-[#4ade80]" id={`thread-weight-${subKey}`}>{threadWeight} lbs</span>
+                                    <span className="text-[10px] text-[#a1a1aa] dark:text-[#52525b]">({Math.ceil(threadWeight * 0.453592)} kg)</span>
                                 </div>
                             )}
                         </div>
@@ -179,20 +179,20 @@ export default function DataTable() {
                 const hasSubGroups = catData && typeof catData === "object" && "_sub_groups" in catData;
 
                 return (
-                    <div key={catName} className="rounded-xl overflow-hidden bg-[#fffefb] border border-[#eee9e1] shadow-sm">
+                    <div key={catName} className="rounded-lg overflow-hidden bg-white dark:bg-[#18181b] border border-[#e5e5e5] dark:border-[#27272a]">
                         {/* Category Header */}
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-[#eee9e1]">
-                            <h3 className="text-[13px] font-semibold text-[#3b3730] flex items-center gap-2.5">
-                                <span className={`w-1.5 h-4 rounded-full ${isThread ? "bg-[#5b7a6a]" : "bg-[#c4956a]"}`} />
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-[#e5e5e5] dark:border-[#27272a]">
+                            <h3 className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] flex items-center gap-2.5">
+                                <span className={`w-1 h-4 rounded-full ${isThread ? "bg-[#16a34a] dark:bg-[#4ade80]" : "bg-[#2563eb] dark:bg-[#60a5fa]"}`} />
                                 {catName}
                             </h3>
                             {hasSubGroups && (
-                                <span className="text-[11px] font-medium text-[#a09888] bg-[#f4f1ec] px-2 py-0.5 rounded-full">
+                                <span className="text-[11px] font-medium text-[#a1a1aa] dark:text-[#52525b]">
                                     {Object.keys(catData._sub_groups).length} groups
                                 </span>
                             )}
                             {!hasSubGroups && Array.isArray(catData) && (
-                                <span className="text-[11px] font-medium text-[#a09888]">{catData.length} items</span>
+                                <span className="text-[11px] text-[#a1a1aa] dark:text-[#52525b]">{catData.length} items</span>
                             )}
                         </div>
 
@@ -200,15 +200,65 @@ export default function DataTable() {
                             <div>
                                 {Object.entries(catData._sub_groups).map(([subName, subRows]: [string, any]) => (
                                     <div key={subName}>
-                                        <div className={`flex items-center gap-2 px-4 py-2 border-b border-[#eee9e1]
-                                            ${isThread ? "bg-[#eef3f0]" : "bg-[#faf3ec]"}`}>
-                                            <span className={`w-1 h-1 rounded-full ${isThread ? "bg-[#5b7a6a]" : "bg-[#c4956a]"}`} />
-                                            <span className={`text-[11px] font-medium ${isThread ? "text-[#5b7a6a]" : "text-[#c4956a]"}`}>{subName}</span>
-                                            <span className="text-[10px] text-[#a09888]">{subRows.length}</span>
+                                        <div className="flex items-center gap-2 px-4 py-2 border-b border-[#f5f5f5] dark:border-[#1a1a1e] bg-[#fafafa] dark:bg-[#09090b]">
+                                            <span className={`w-1 h-1 rounded-full ${isThread ? "bg-[#16a34a] dark:bg-[#4ade80]" : "bg-[#2563eb] dark:bg-[#60a5fa]"}`} />
+                                            <span className="text-[11px] font-medium text-[#71717a] dark:text-[#a1a1aa]">{subName}</span>
+                                            <span className="text-[10px] text-[#a1a1aa] dark:text-[#52525b]">{subRows.length}</span>
                                         </div>
                                         {renderTable(subRows, catName, subName, isThread)}
                                     </div>
                                 ))}
+
+                                {/* Grand Total for all thread sub-groups */}
+                                {isThread && (() => {
+                                    let allThreadTotal = 0;
+                                    let allThreadWeightLbs = 0;
+                                    let allConeLengthSum = 0;
+                                    const subEntries = Object.entries(catData._sub_groups) as [string, any[]][];
+
+                                    subEntries.forEach(([subName, subRows]) => {
+                                        let subTotal = 0;
+                                        subRows.forEach((row: any, idx: number) => {
+                                            const qty = getQty(row);
+                                            subTotal += calcTotal(activePO, catName, subName, idx, qty);
+                                        });
+                                        allThreadTotal += subTotal;
+
+                                        const ts = getTS(subName);
+                                        const divisor = THREAD_DIVISORS[ts.count] || 19202.4;
+                                        if (ts.coneLength > 0 && subTotal > 0) {
+                                            allConeLengthSum += ts.coneLength;
+                                            allThreadWeightLbs += Math.ceil(subTotal * (ts.coneLength / divisor));
+                                        }
+                                    });
+
+                                    if (allThreadTotal <= 0) return null;
+
+                                    return (
+                                        <div className="px-4 py-3 bg-[#ecfdf5] dark:bg-[#022c22] border-t-2 border-[#16a34a]/30 dark:border-[#4ade80]/20">
+                                            <div className="flex flex-wrap items-center gap-4">
+                                                <span className="text-[11px] font-bold text-[#16a34a] dark:text-[#4ade80] uppercase tracking-wide">
+                                                    🧵 All Threads Summary
+                                                </span>
+                                                <div className="h-4 w-px bg-[#16a34a]/20 dark:bg-[#4ade80]/20" />
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[10px] text-[#a1a1aa] dark:text-[#52525b]">Total Req.</span>
+                                                    <span className="text-[12px] font-bold text-[#18181b] dark:text-[#fafafa]">{allThreadTotal.toFixed(2)}</span>
+                                                </div>
+                                                {allThreadWeightLbs > 0 && (
+                                                    <>
+                                                        <div className="h-4 w-px bg-[#16a34a]/20 dark:bg-[#4ade80]/20" />
+                                                        <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-[#09090b] border border-[#16a34a]/20 dark:border-[#4ade80]/20">
+                                                            <span className="text-[10px] text-[#a1a1aa] dark:text-[#52525b]">Total Weight</span>
+                                                            <span className="text-[13px] font-bold text-[#16a34a] dark:text-[#4ade80]">{allThreadWeightLbs} lbs</span>
+                                                            <span className="text-[10px] text-[#a1a1aa] dark:text-[#52525b]">({Math.ceil(allThreadWeightLbs * 0.453592)} kg)</span>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         ) : (
                             Array.isArray(catData) && renderTable(catData, catName, "_flat", false)
