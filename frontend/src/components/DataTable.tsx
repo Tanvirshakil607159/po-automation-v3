@@ -100,13 +100,18 @@ export default function DataTable() {
                     <table className="w-full min-w-[600px]">
                         <thead>
                             <tr>
-                                <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em] bg-slate-50/80 border-b border-slate-100">#</th>
+                                <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em]"
+                                    style={{ color: "var(--text-muted)", background: "var(--bg-base)", borderBottom: "1px solid var(--border-light)" }}>#</th>
                                 {headers.map((h: string) => (
-                                    <th key={h} className="px-3 py-2.5 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em] bg-slate-50/80 border-b border-slate-100 whitespace-nowrap">{h}</th>
+                                    <th key={h} className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap"
+                                        style={{ color: "var(--text-muted)", background: "var(--bg-base)", borderBottom: "1px solid var(--border-light)" }}>{h}</th>
                                 ))}
-                                <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-amber-600 uppercase tracking-[0.08em] bg-amber-50/60 border-b border-amber-100/60 whitespace-nowrap">Cons/Unit</th>
-                                <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-amber-600 uppercase tracking-[0.08em] bg-amber-50/60 border-b border-amber-100/60 whitespace-nowrap">Wastage %</th>
-                                <th className="px-3 py-2.5 text-center text-[10px] font-semibold text-emerald-600 uppercase tracking-[0.08em] bg-emerald-50/60 border-b border-emerald-100/60 whitespace-nowrap">Total Req.</th>
+                                <th className="px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap"
+                                    style={{ color: "var(--warm-amber)", background: "var(--warm-amber-light)", borderBottom: "1px solid #ead9c8" }}>Cons/Unit</th>
+                                <th className="px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap"
+                                    style={{ color: "var(--warm-amber)", background: "var(--warm-amber-light)", borderBottom: "1px solid #ead9c8" }}>Wastage %</th>
+                                <th className="px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap"
+                                    style={{ color: "var(--success)", background: "var(--success-light)", borderBottom: "1px solid #c8ddd0" }}>Total Req.</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -124,33 +129,47 @@ export default function DataTable() {
                                 const consKey = isFlat ? catKey : `${catKey}::${subKey}`;
 
                                 return (
-                                    <tr key={rowIdx} className="border-b border-slate-50 hover:bg-indigo-50/30 transition-colors duration-150 group">
-                                        <td className="px-3 py-2 text-[11px] text-slate-300 font-medium tabular-nums">{rowIdx + 1}</td>
+                                    <tr key={rowIdx} className="transition-colors duration-150 group"
+                                        style={{ borderBottom: "1px solid var(--border-light)" }}
+                                        onMouseEnter={e => e.currentTarget.style.background = "#f0ede8"}
+                                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                                    >
+                                        <td className="px-3 py-2 text-[11px] font-medium" style={{ color: "var(--text-muted)" }}>{rowIdx + 1}</td>
                                         {headers.map((h: string) => (
-                                            <td key={h} className="px-3 py-2 text-[12px] text-slate-600 whitespace-nowrap">{row[h] || "—"}</td>
+                                            <td key={h} className="px-3 py-2 text-[12px] whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>{row[h] || "—"}</td>
                                         ))}
-                                        <td className="px-2 py-1.5 bg-amber-50/30">
+                                        <td className="px-2 py-1.5" style={{ background: "rgba(250,243,236,0.5)" }}>
                                             <input
                                                 type="number" min="0" step="0.01"
                                                 value={cons}
                                                 onChange={(e) => setConsumption(activePO, consKey, rowIdx, "consumption", parseFloat(e.target.value) || 0)}
-                                                className="w-16 px-2 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 text-center text-[12px] font-medium
-                                                    focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+                                                className="w-16 px-2 py-1.5 rounded-md text-center text-[12px] font-medium transition-all"
+                                                style={{
+                                                    background: "var(--bg-card)", border: "1px solid var(--border)",
+                                                    color: "var(--text-primary)"
+                                                }}
+                                                onFocus={e => { e.target.style.borderColor = "var(--accent)"; e.target.style.boxShadow = "0 0 0 3px rgba(91,122,106,0.1)"; }}
+                                                onBlur={e => { e.target.style.borderColor = "var(--border)"; e.target.style.boxShadow = "none"; }}
                                                 id={`cons-${catKey}-${subKey}-${rowIdx}`}
                                             />
                                         </td>
-                                        <td className="px-2 py-1.5 bg-amber-50/30">
+                                        <td className="px-2 py-1.5" style={{ background: "rgba(250,243,236,0.5)" }}>
                                             <input
                                                 type="number" min="0" max="100" step="0.5"
                                                 value={wastage}
                                                 onChange={(e) => setConsumption(activePO, consKey, rowIdx, "wastage", parseFloat(e.target.value) || 0)}
-                                                className="w-16 px-2 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 text-center text-[12px] font-medium
-                                                    focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+                                                className="w-16 px-2 py-1.5 rounded-md text-center text-[12px] font-medium transition-all"
+                                                style={{
+                                                    background: "var(--bg-card)", border: "1px solid var(--border)",
+                                                    color: "var(--text-primary)"
+                                                }}
+                                                onFocus={e => { e.target.style.borderColor = "var(--accent)"; e.target.style.boxShadow = "0 0 0 3px rgba(91,122,106,0.1)"; }}
+                                                onBlur={e => { e.target.style.borderColor = "var(--border)"; e.target.style.boxShadow = "none"; }}
                                                 id={`waste-${catKey}-${subKey}-${rowIdx}`}
                                             />
                                         </td>
-                                        <td className="px-3 py-2 text-center bg-emerald-50/30">
-                                            <span className="text-[12px] font-semibold text-emerald-600 tabular-nums">
+                                        <td className="px-3 py-2 text-center" style={{ background: "rgba(237,245,240,0.5)" }}>
+                                            <span className="text-[12px] font-semibold" style={{ color: "var(--success)" }}>
                                                 {total > 0 ? total.toFixed(2) : "—"}
                                             </span>
                                         </td>
@@ -159,18 +178,19 @@ export default function DataTable() {
                             })}
                         </tbody>
                         <tfoot>
-                            <tr className="bg-slate-50/80 border-t border-slate-200/60">
-                                <td className="px-3 py-2.5 text-[11px] font-bold text-slate-400">Σ</td>
+                            <tr style={{ background: "var(--bg-base)", borderTop: "1px solid var(--border)" }}>
+                                <td className="px-3 py-2.5 text-[11px] font-bold" style={{ color: "var(--text-muted)" }}>Σ</td>
                                 {headers.map((h: string, i: number) => (
                                     <td key={h} className="px-3 py-2.5 text-[12px] font-bold">
                                         {i === qtyColIndex ? (
-                                            <span className="text-indigo-600 tabular-nums">{grandQty.toLocaleString()}</span>
+                                            <span style={{ color: "var(--accent)" }}>{grandQty.toLocaleString()}</span>
                                         ) : ""}
                                     </td>
                                 ))}
-                                <td colSpan={2} className="px-3 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider">Grand Total</td>
+                                <td colSpan={2} className="px-3 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider"
+                                    style={{ color: "var(--text-muted)" }}>Grand Total</td>
                                 <td className="px-3 py-2.5 text-center">
-                                    <span className="text-[13px] font-bold text-emerald-600 tabular-nums">
+                                    <span className="text-[13px] font-bold" style={{ color: "var(--success)" }}>
                                         {grandTotal > 0 ? grandTotal.toFixed(2) : "—"}
                                     </span>
                                 </td>
@@ -181,20 +201,21 @@ export default function DataTable() {
 
                 {/* Thread Weight Calculator */}
                 {isThread && (
-                    <div className="px-4 py-3 bg-gradient-to-r from-indigo-50/60 to-violet-50/40 border-t border-indigo-100/60">
+                    <div className="px-4 py-3"
+                        style={{ background: "linear-gradient(135deg, var(--accent-light), #f0ede8)", borderTop: "1px solid var(--border-light)" }}>
                         <div className="flex flex-wrap items-center gap-3">
                             <div className="flex items-center gap-1.5">
-                                <span className="text-[12px] font-semibold text-indigo-600">🧵</span>
-                                <span className="text-[11px] font-semibold text-indigo-600 uppercase tracking-wide">Weight</span>
+                                <span className="text-[12px]">🧵</span>
+                                <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--accent)" }}>Weight</span>
                             </div>
-                            <div className="h-4 w-px bg-indigo-200/60" />
+                            <div className="h-4 w-px" style={{ background: "var(--border)" }} />
                             <div className="flex items-center gap-1.5">
-                                <label className="text-[10px] text-slate-400 font-medium">Count</label>
+                                <label className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>Count</label>
                                 <select
                                     value={ts.count}
                                     onChange={(e) => updateThreadSetting(subKey, "count", e.target.value)}
-                                    className="px-2 py-1 rounded-md bg-white border border-indigo-200/80 text-indigo-700 text-[12px] font-medium
-                                        focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer"
+                                    className="px-2 py-1 rounded-md text-[12px] font-medium cursor-pointer transition-all"
+                                    style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
                                     id={`thread-count-${subKey}`}
                                 >
                                     <option value="50/2">50/2</option>
@@ -202,23 +223,27 @@ export default function DataTable() {
                                 </select>
                             </div>
                             <div className="flex items-center gap-1.5">
-                                <label className="text-[10px] text-slate-400 font-medium">Cone (m)</label>
+                                <label className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>Cone (m)</label>
                                 <input
                                     type="number" min="0" step="100"
                                     value={ts.coneLength || ""}
                                     onChange={(e) => updateThreadSetting(subKey, "coneLength", parseFloat(e.target.value) || 0)}
                                     placeholder="5000"
-                                    className="w-20 px-2 py-1 rounded-md bg-white border border-indigo-200/80 text-indigo-700 text-[12px] font-medium
-                                        focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-300"
+                                    className="w-20 px-2 py-1 rounded-md text-[12px] font-medium transition-all"
+                                    style={{
+                                        background: "var(--bg-card)", border: "1px solid var(--border)",
+                                        color: "var(--text-primary)"
+                                    }}
                                     id={`cone-length-${subKey}`}
                                 />
                             </div>
                             {threadWeight > 0 && (
-                                <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-indigo-200/60 card-shadow">
-                                    <span className="text-[12px] font-bold text-indigo-600 tabular-nums" id={`thread-weight-${subKey}`}>
+                                <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg"
+                                    style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "0 1px 3px rgba(60,50,40,0.04)" }}>
+                                    <span className="text-[12px] font-bold" style={{ color: "var(--accent)" }} id={`thread-weight-${subKey}`}>
                                         {threadWeight} lbs
                                     </span>
-                                    <span className="text-[10px] text-slate-400 font-medium">
+                                    <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>
                                         ({Math.ceil(threadWeight * 0.453592)} kg)
                                     </span>
                                 </div>
@@ -237,32 +262,37 @@ export default function DataTable() {
                 const hasSubGroups = catData && typeof catData === "object" && "_sub_groups" in catData;
 
                 return (
-                    <div key={catName} className="rounded-xl overflow-hidden bg-white card-shadow hover:card-shadow-hover transition-premium">
+                    <div key={catName} className="card overflow-hidden transition-all duration-200">
                         {/* Category Header */}
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                            <h3 className="text-[13px] font-semibold text-slate-800 flex items-center gap-2.5">
-                                <span className={`w-1.5 h-4 rounded-full ${isThread ? "bg-indigo-400" : "bg-slate-300"}`} />
+                        <div className="flex items-center justify-between px-4 py-3"
+                            style={{ borderBottom: "1px solid var(--border-light)" }}>
+                            <h3 className="text-[13px] font-semibold flex items-center gap-2.5" style={{ color: "var(--text-primary)" }}>
+                                <span className="w-1.5 h-4 rounded-full" style={{ background: isThread ? "var(--accent)" : "var(--warm-amber)" }} />
                                 {catName}
                             </h3>
                             {hasSubGroups && (
-                                <span className="text-[11px] text-slate-400 font-medium bg-slate-50 px-2 py-0.5 rounded-full">
+                                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+                                    style={{ background: "var(--bg-base)", color: "var(--text-muted)" }}>
                                     {Object.keys(catData._sub_groups).length} groups
                                 </span>
                             )}
                             {!hasSubGroups && Array.isArray(catData) && (
-                                <span className="text-[11px] text-slate-400 font-medium">{catData.length} items</span>
+                                <span className="text-[11px] font-medium" style={{ color: "var(--text-muted)" }}>{catData.length} items</span>
                             )}
                         </div>
 
                         {hasSubGroups ? (
-                            <div className="divide-y divide-slate-50">
+                            <div>
                                 {Object.entries(catData._sub_groups).map(([subName, subRows]: [string, any]) => (
                                     <div key={subName}>
-                                        <div className={`flex items-center gap-2 px-4 py-2 border-b border-slate-50
-                                            ${isThread ? "bg-indigo-50/30" : "bg-slate-50/40"}`}>
-                                            <span className={`w-1 h-1 rounded-full ${isThread ? "bg-indigo-300" : "bg-slate-300"}`} />
-                                            <span className={`text-[11px] font-medium ${isThread ? "text-indigo-600" : "text-slate-500"}`}>{subName}</span>
-                                            <span className="text-[10px] text-slate-400">{subRows.length}</span>
+                                        <div className="flex items-center gap-2 px-4 py-2"
+                                            style={{
+                                                background: isThread ? "var(--accent-light)" : "var(--warm-amber-light)",
+                                                borderBottom: "1px solid var(--border-light)"
+                                            }}>
+                                            <span className="w-1 h-1 rounded-full" style={{ background: isThread ? "var(--accent)" : "var(--warm-amber)" }} />
+                                            <span className="text-[11px] font-medium" style={{ color: isThread ? "var(--accent)" : "var(--warm-amber)" }}>{subName}</span>
+                                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{subRows.length}</span>
                                         </div>
                                         {renderTable(subRows, catName, subName, isThread)}
                                     </div>

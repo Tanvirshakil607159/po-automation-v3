@@ -10,7 +10,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "PO Sorter — Garment Accessories Automation",
   description:
-    "Automatically extract, sort, and calculate consumption from Purchase Order PDFs. Item-wise sorting with integrated wastage calculator.",
+    "Automatically extract, sort, and calculate consumption from Purchase Order PDFs.",
 };
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} antialiased bg-[#fafbfc] text-slate-900 min-h-screen`} style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}>
+      <body className={`${inter.variable} antialiased`}>
         {children}
       </body>
     </html>

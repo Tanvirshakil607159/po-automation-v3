@@ -1,28 +1,28 @@
 @import "tailwindcss";
 
+/* ─── Eye-soothing warm palette ─── */
 :root {
-  --background: #fafbfc;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-hover: #f8fafc;
-  --border: #e8ecf1;
-  --border-light: #f1f5f9;
-  --muted: #64748b;
-  --muted-light: #94a3b8;
-  --accent: #4f46e5;
-  --accent-light: #eef2ff;
-  --accent-hover: #4338ca;
-  --success: #059669;
-  --success-light: #ecfdf5;
-  --warning: #d97706;
-  --warning-light: #fffbeb;
+  --bg-base: #f5f2ed;
+  --bg-surface: #faf8f5;
+  --bg-card: #fffefb;
+  --text-primary: #3b3730;
+  --text-secondary: #7a7265;
+  --text-muted: #a09888;
+  --border: #e6e0d6;
+  --border-light: #eee9e1;
+  --accent: #5b7a6a;
+  --accent-hover: #4d6a5c;
+  --accent-light: #eef3f0;
+  --warm-amber: #c4956a;
+  --warm-amber-light: #faf3ec;
+  --success: #6a9a7b;
+  --success-light: #edf5f0;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -31,13 +31,13 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  letter-spacing: -0.011em;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.01em;
 }
 
-/* Premium scrollbar */
+/* ─── Soft scrollbar ─── */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -48,16 +48,15 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #d4cdc3;
   border-radius: 99px;
-  transition: background 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #b8b0a4;
 }
 
-/* Number input spinners */
+/* ─── Inputs ─── */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   opacity: 0;
@@ -69,76 +68,33 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-/* Smooth focus rings */
 input:focus,
 select:focus,
 button:focus-visible {
   outline: none;
 }
 
-/* Premium card shadow system */
-.card-shadow {
+/* ─── Card shadows (warm tint) ─── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.03),
-    0 1px 3px rgba(0, 0, 0, 0.04),
-    0 4px 12px rgba(0, 0, 0, 0.03);
+    0 1px 2px rgba(60, 50, 40, 0.04),
+    0 3px 10px rgba(60, 50, 40, 0.03);
+  border-radius: 12px;
 }
 
-.card-shadow-hover {
+.card:hover {
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.03),
-    0 2px 8px rgba(0, 0, 0, 0.06),
-    0 8px 24px rgba(0, 0, 0, 0.05);
+    0 2px 6px rgba(60, 50, 40, 0.06),
+    0 6px 20px rgba(60, 50, 40, 0.04);
 }
 
-/* Smooth transitions */
-.transition-premium {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Shimmer loading effect */
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-.shimmer::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  animation: shimmer 1.5s infinite;
-}
-
-/* Pulse dot */
-@keyframes pulse-dot {
-
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 0.5;
-    transform: scale(0.85);
-  }
-}
-
-.animate-pulse-dot {
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-
-/* Fade in animation */
-@keyframes fadeIn {
+/* ─── Animations ─── */
+@keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
 
   to {
@@ -147,6 +103,22 @@ button:focus-visible {
   }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.35s ease-out forwards;
+.animate-fade-up {
+  animation: fadeUp 0.4s ease-out forwards;
+}
+
+@keyframes softPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-soft-pulse {
+  animation: softPulse 2.5s ease-in-out infinite;
 }

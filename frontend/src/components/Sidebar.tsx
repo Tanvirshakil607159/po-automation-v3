@@ -65,7 +65,8 @@ export default function Sidebar() {
             {/* Mobile toggle */}
             <button
                 onClick={() => setOpen(true)}
-                className="lg:hidden fixed top-3.5 left-3 z-50 p-2 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-slate-600 transition-premium shadow-sm"
+                className="lg:hidden fixed top-3.5 left-3 z-50 p-2 rounded-lg shadow-sm transition-all duration-200"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
                 id="sidebar-toggle"
                 aria-label="Open menu"
             >
@@ -77,7 +78,8 @@ export default function Sidebar() {
             {/* Mobile overlay */}
             {open && (
                 <div
-                    className="lg:hidden fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 transition-opacity"
+                    className="lg:hidden fixed inset-0 z-40 transition-opacity"
+                    style={{ background: "rgba(59,55,48,0.15)", backdropFilter: "blur(4px)" }}
                     onClick={() => setOpen(false)}
                 />
             )}
@@ -86,31 +88,33 @@ export default function Sidebar() {
             <aside
                 className={`
                     fixed lg:relative z-50 lg:z-auto
-                    w-[260px] bg-white border-r border-slate-100
-                    flex flex-col h-full select-none
+                    w-[260px] flex flex-col h-full select-none
                     transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
                     ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
                 `}
+                style={{ background: "var(--bg-surface)", borderRight: "1px solid var(--border-light)" }}
                 id="sidebar"
             >
                 {/* Brand */}
-                <div className="px-5 py-5 border-b border-slate-100">
+                <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--border-light)" }}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
+                            <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm"
+                                style={{ background: "linear-gradient(135deg, var(--accent), #4a6e5e)" }}>
                                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round"
                                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
                             <div>
-                                <h1 className="text-[14px] font-bold text-slate-900 tracking-tight leading-none">PO Sorter</h1>
-                                <p className="text-[10px] text-slate-400 font-medium mt-0.5">v3.0 · K.A. Design</p>
+                                <h1 className="text-[14px] font-bold tracking-tight leading-none" style={{ color: "var(--text-primary)" }}>PO Sorter</h1>
+                                <p className="text-[10px] font-medium mt-0.5" style={{ color: "var(--text-muted)" }}>v3.0 · K.A. Design</p>
                             </div>
                         </div>
                         <button
                             onClick={() => setOpen(false)}
-                            className="lg:hidden p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-premium"
+                            className="lg:hidden p-1 rounded-md transition-all"
+                            style={{ color: "var(--text-muted)" }}
                             aria-label="Close menu"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,10 +127,11 @@ export default function Sidebar() {
                 {/* History */}
                 <div className="flex-1 overflow-y-auto px-3 py-3">
                     <div className="flex items-center justify-between px-2 mb-2">
-                        <h2 className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.12em]">Recent Files</h2>
+                        <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>Recent Files</h2>
                         <button
                             onClick={loadHistory}
-                            className="text-slate-300 hover:text-indigo-500 transition-premium p-0.5 rounded"
+                            className="p-0.5 rounded transition-colors"
+                            style={{ color: "var(--text-muted)" }}
                             title="Refresh"
                         >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,13 +143,14 @@ export default function Sidebar() {
 
                     {history.length === 0 ? (
                         <div className="text-center py-10">
-                            <div className="w-10 h-10 mx-auto mb-2.5 rounded-full bg-slate-50 flex items-center justify-center">
-                                <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-10 h-10 mx-auto mb-2.5 rounded-full flex items-center justify-center"
+                                style={{ background: "var(--bg-base)" }}>
+                                <svg className="w-5 h-5" style={{ color: "var(--text-muted)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
-                            <p className="text-[11px] text-slate-400">No uploads yet</p>
+                            <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>No uploads yet</p>
                         </div>
                     ) : (
                         <div className="space-y-0.5">
@@ -155,34 +161,38 @@ export default function Sidebar() {
                                     <div
                                         key={item.id}
                                         onClick={() => handleLoad(item.id)}
-                                        className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-premium
-                                            ${isLoading ? "bg-indigo-50" : "hover:bg-slate-50 active:bg-slate-100"}`}
+                                        className="group flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-all duration-200"
+                                        style={{ background: isLoading ? "var(--accent-light)" : "transparent" }}
+                                        onMouseEnter={e => { if (!isLoading) e.currentTarget.style.background = "var(--bg-base)"; }}
+                                        onMouseLeave={e => { if (!isLoading) e.currentTarget.style.background = "transparent"; }}
                                         role="button"
                                         tabIndex={0}
                                         id={`history-${item.id}`}
                                     >
-                                        <div className={`w-7 h-7 flex-shrink-0 rounded-lg flex items-center justify-center transition-premium
-                                            ${isLoading ? "bg-indigo-100" : "bg-slate-50 group-hover:bg-white"}`}>
+                                        <div className="w-7 h-7 flex-shrink-0 rounded-lg flex items-center justify-center transition-all"
+                                            style={{ background: "var(--bg-base)" }}>
                                             {isLoading ? (
-                                                <div className="w-3 h-3 border-[1.5px] border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                                <div className="w-3 h-3 rounded-full animate-spin"
+                                                    style={{ border: "1.5px solid var(--border)", borderTopColor: "var(--accent)" }} />
                                             ) : (
-                                                <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500 transition-premium" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg className="w-3.5 h-3.5" style={{ color: "var(--text-muted)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                                         d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                                 </svg>
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[12px] text-slate-600 truncate font-medium group-hover:text-slate-900 transition-premium">
+                                            <p className="text-[12px] truncate font-medium" style={{ color: "var(--text-secondary)" }}>
                                                 {item.filename}
                                             </p>
-                                            <p className="text-[10px] text-slate-400 mt-0">
+                                            <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                                                 {date} · {time}
                                             </p>
                                         </div>
                                         <button
                                             onClick={(e) => handleDelete(item.id, e)}
-                                            className="opacity-0 group-hover:opacity-100 p-1 rounded text-slate-300 hover:text-red-500 transition-all"
+                                            className="opacity-0 group-hover:opacity-100 p-1 rounded transition-all"
+                                            style={{ color: "var(--text-muted)" }}
                                             title="Delete"
                                         >
                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,8 +206,8 @@ export default function Sidebar() {
                     )}
                 </div>
 
-                <div className="px-5 py-3 border-t border-slate-100">
-                    <p className="text-[10px] text-slate-400 text-center font-medium">Garment Accessories Automation</p>
+                <div className="px-5 py-3" style={{ borderTop: "1px solid var(--border-light)" }}>
+                    <p className="text-[10px] text-center font-medium" style={{ color: "var(--text-muted)" }}>Garment Accessories Automation</p>
                 </div>
             </aside>
         </>

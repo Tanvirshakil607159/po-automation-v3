@@ -47,15 +47,20 @@ export default function ExportButton() {
         <button
             onClick={handleExport}
             disabled={exporting}
-            className="group flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold transition-premium
-                bg-indigo-600 text-white shadow-sm shadow-indigo-200/60
-                hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-200/80
-                active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="group flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold transition-all duration-200
+                active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed text-white"
+            style={{
+                background: "var(--accent)",
+                boxShadow: "0 2px 8px rgba(91,122,106,0.25)"
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent-hover)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(91,122,106,0.35)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(91,122,106,0.25)"; }}
             id="export-btn"
         >
             {exporting ? (
                 <>
-                    <div className="w-3.5 h-3.5 border-[1.5px] border-white/40 border-t-white rounded-full animate-spin" />
+                    <div className="w-3.5 h-3.5 rounded-full animate-spin"
+                        style={{ border: "1.5px solid rgba(255,255,255,0.3)", borderTopColor: "white" }} />
                     <span className="hidden sm:inline">Exporting...</span>
                 </>
             ) : (
