@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
+import ExportButton from "./ExportButton";
 
 const THREAD_DIVISORS: Record<string, number> = { "50/2": 19202.4, "40/2": 15362 };
 
@@ -12,11 +13,14 @@ function isThreadCategory(name: string): boolean {
 
 interface ThreadSetting { count: string; coneLength: number; wastage: number; }
 
+interface EditingCell { po: string; cat: string; subCat: string | null; row: number; col: string; }
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 export default function DataTable() {
-    const { groupedData, activePO, consumptionValues, setConsumption, excludedCategories, toggleCategoryExclusion, moveItem, addSubCategory } = useAppStore();
+    const { uploadResult, groupedData, activePO, activeTab, consumptionValues, setConsumption, excludedCategories, toggleCategoryExclusion, moveItem, addSubCategory, editItemData } = useAppStore();
     const [threadSettings, setThreadSettings] = useState<Record<string, ThreadSetting>>({});
+    const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
     const [dragOverCat, setDragOverCat] = useState<string | null>(null);
     const [dragOverSubCat, setDragOverSubCat] = useState<string | null>(null);
 
@@ -120,20 +124,47 @@ export default function DataTable() {
 
                                 return (
                                     <tr key={rowIdx}
-                                        draggable
-                                        onDragStart={(e) => {
-                                            e.dataTransfer.setData("application/json", dragPayload);
-                                            e.dataTransfer.effectAllowed = "move";
-                                            // Optional: Set a custom drag image or let the browser snapshot the row
-                                        }}
-                                        className="border-b border-[#f5f5f5] dark:border-[#1a1a1e] hover:bg-[#fafafa] dark:hover:bg-[#1a1a1e] transition-colors cursor-grab active:cursor-grabbing group">
-                                        <td className="px-3 py-2 text-center text-[#d4d4d8] dark:text-[#3f3f46] group-hover:text-[#a1a1aa] dark:group-hover:text-[#52525b] transition-colors">
+                                        className="border-b border-[#f5f5f5] dark:border-[#1a1a1e] hover:bg-[#fafafa] dark:hover:bg-[#1a1a1e] transition-colors group">
+                                        <td className="px-3 py-2 text-center text-[#d4d4d8] dark:text-[#3f3f46] hover:text-[#52525b] dark:hover:text-[#a1a1aa] transition-colors cursor-grab active:cursor-grabbing"
+                                            draggable
+                                            onDragStart={(e) => {
+                                                e.dataTransfer.setData("application/json", dragPayload);
+                                                e.dataTransfer.effectAllowed = "move";
+                                            }}
+                                        >
                                             <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
                                         </td>
                                         <td className="px-3 py-2 text-[11px] text-[#a1a1aa] dark:text-[#52525b]">{rowIdx + 1}</td>
-                                        {headers.map((h: string) => (
-                                            <td key={h} className="px-3 py-2 text-[12px] text-[#52525b] dark:text-[#a1a1aa] whitespace-nowrap">{row[h] || "—"}</td>
-                                        ))}
+                                        {headers.map((h: string) => {
+                                            const cellValue = String(row[h] || "");
+                                            const isEditing = editingCell?.po === activePO && editingCell?.cat === catKey && editingCell?.subCat === (isFlat ? null : subKey) && editingCell?.row === rowIdx && editingCell?.col === h;
+
+                                            return (
+                                                <td key={h} className="px-3 py-2 text-[12px] text-[#52525b] dark:text-[#a1a1aa] whitespace-nowrap"
+                                                    onDoubleClick={() => setEditingCell({ po: activePO, cat: catKey, subCat: isFlat ? null : subKey, row: rowIdx, col: h })}
+                                                >
+                                                    {isEditing ? (
+                                                        <input
+                                                            autoFocus
+                                                            className="w-full bg-white dark:bg-[#09090b] border border-[#2563eb] text-[#18181b] dark:text-[#fafafa] px-1 py-0.5 rounded outline-none"
+                                                            defaultValue={cellValue}
+                                                            onBlur={(e) => {
+                                                                if (e.target.value !== cellValue) {
+                                                                    editItemData(activePO, catKey, isFlat ? null : subKey, rowIdx, h, e.target.value);
+                                                                }
+                                                                setEditingCell(null);
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") e.currentTarget.blur();
+                                                                if (e.key === "Escape") setEditingCell(null);
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        cellValue || "—"
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
                                         <td className="px-2 py-1.5">
                                             <input type="number" min="0" step="0.01" value={cons}
                                                 onChange={(e) => setConsumption(activePO, consKey, rowIdx, "consumption", parseFloat(e.target.value) || 0)}
@@ -241,7 +272,7 @@ export default function DataTable() {
                                 setDragOverCat(null);
                                 try {
                                     const data = JSON.parse(e.dataTransfer.getData("application/json"));
-                                    if (data.cat !== catName || data.subCat !== null) {
+                                    if (data.cat === catName && data.subCat !== null) {
                                         moveItem(data.po, data.cat, data.subCat, data.index, catName, null);
                                     }
                                 } catch (err) { }
@@ -314,7 +345,8 @@ export default function DataTable() {
                                                 setDragOverCat(null);
                                                 try {
                                                     const data = JSON.parse(e.dataTransfer.getData("application/json"));
-                                                    if (data.cat !== catName || data.subCat !== subName) {
+                                                    // ONLY allow dropping if it's the SAME main category and diff subcat
+                                                    if (data.cat === catName && data.subCat !== subName) {
                                                         moveItem(data.po, data.cat, data.subCat, data.index, catName, subName);
                                                     }
                                                 } catch (err) { }

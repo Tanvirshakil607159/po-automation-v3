@@ -68,28 +68,12 @@ def _build_table_elements(
     grand_qty = 0.0
 
     for row_idx, row_data in enumerate(rows):
-        order_qty = 0.0
-        if qty_col_idx >= 0:
-            try:
-                order_qty = float(str(row_data.get(base_headers[qty_col_idx], "0")).replace(",", ""))
-            except (ValueError, TypeError):
-                order_qty = 0.0
+        order_qty = float(row_data.get("_computed_qty", 0))
         grand_qty += order_qty
 
-        cons_data = {}
-        if consumption_values:
-            po_cons = consumption_values.get(po_name, {})
-            cat_cons = po_cons.get(cons_key, {}) if isinstance(po_cons, dict) else {}
-            cons_data = cat_cons.get(str(row_idx), {}) if isinstance(cat_cons, dict) else {}
-
-        consumption = float(cons_data.get("consumption", 1))
-        wastage = float(cons_data.get("wastage", 5))
-        total_req = (order_qty * consumption)
-        if not is_thread:
-            total_req = total_req * (1 + wastage / 100)
-        else:
-            fraction = total_req - math.floor(total_req)
-            total_req = math.ceil(total_req) if fraction >= 0.5 else math.floor(total_req)
+        consumption = float(row_data.get("_computed_cons", 1))
+        wastage = float(row_data.get("_computed_was", 5))
+        total_req = float(row_data.get("_computed_total_req", 0))
         grand_total += total_req
 
         row_cells = [Paragraph(str(row_idx + 1), cell_style)]
@@ -154,11 +138,16 @@ def _build_table_elements(
 
     # ── Thread Weight ──────────────────────────────────────
     if is_thread and cone_length > 0 and grand_total > 0:
-        divisor = THREAD_DIVISORS.get(thread_count, 19202.4)
+        # Instead of calculating from scratch, see if a sub-group weight was passed
+        # This function processes rows, but the parent loop knows the sub-group weight
+        # Unfortunately, _build_table_elements doesn't receive the sub_group dict natively,
+        # but wait, the Thread Weight here is for the specific table (sub-group or flat).
+        # We can extract the thread weight if we modified the signature, or just calculate it
+        # strictly here since grand_total is EXACTLY mathematically matched now.
         
+        divisor = THREAD_DIVISORS.get(thread_count, 19202.4)
         base_weight = grand_total * (cone_length / divisor)
         weight_with_wastage = base_weight * (1 + wastage_for_weight / 100)
-        
         weight_lbs = math.ceil(weight_with_wastage)
         weight_kg = math.ceil(weight_lbs * 0.453592)
 
@@ -166,6 +155,7 @@ def _build_table_elements(
             Paragraph(
                 f"<b>Thread Weight:</b> Count: {thread_count}  |  "
                 f"Cone: {cone_length:,.0f}m  |  "
+                f"Wastage: {wastage_for_weight:,.1f}%  |  "
                 f"<b>{weight_lbs:,} lbs</b> ({weight_kg:,} kg)",
                 cell_left_style,
             ),
@@ -283,6 +273,7 @@ def create_export_pdf(
                     sub_ts = thread_settings_map.get(sub_name, {})
                     sub_count = sub_ts.get("count", "50/2") if sub_ts else "50/2"
                     sub_cone = float(sub_ts.get("cone_length", 4000)) if sub_ts else 4000.0
+                    sub_wastage = float(sub_ts.get("wastage", 5.0)) if sub_ts else 5.0
 
                     section_elements = [sub_header]
                     section_elements += _build_table_elements(
@@ -291,60 +282,15 @@ def create_export_pdf(
                         consumption_values, po_name, f"{cat_name}::{sub_name}",
                         available, is_thread=is_thread,
                         thread_count=sub_count, cone_length=sub_cone,
+                        wastage_for_weight=sub_wastage,
                     )
                     section_elements.append(Spacer(1, 4))
                     elements.append(KeepTogether(section_elements))
 
                 # ── All Threads Grand Summary ─────────────────────────
                 if is_thread:
-                    all_thread_total = 0.0
-                    all_thread_weight_lbs = 0
-
-                    for sub_name, rows in sub_groups.items():
-                        sub_total = 0.0
-                        for row_idx, row_data in enumerate(rows):
-                            order_qty = 0.0
-                            if qty_col_idx >= 0:
-                                try:
-                                    order_qty = float(str(row_data.get(base_headers[qty_col_idx], "0")).replace(",", ""))
-                                except (ValueError, TypeError):
-                                    order_qty = 0.0
-
-                            cons_data = {}
-                            if consumption_values:
-                                po_cons = consumption_values.get(po_name, {})
-                                cat_cons = po_cons.get(f"{cat_name}::{sub_name}", {}) if isinstance(po_cons, dict) else {}
-                                cons_data = cat_cons.get(str(row_idx), {}) if isinstance(cat_cons, dict) else {}
-
-                            consumption = float(cons_data.get("consumption", 1))
-                            wastage = float(cons_data.get("wastage", 5))
-                            raw_total = (order_qty * consumption)
-                            if not is_thread:
-                                raw_total = raw_total * (1 + wastage / 100)
-                            else:
-                                fraction = raw_total - math.floor(raw_total)
-                                raw_total = math.ceil(raw_total) if fraction >= 0.5 else math.floor(raw_total)
-                            sub_total += raw_total
-
-                        all_thread_total += sub_total
-
-                        sub_ts = thread_settings_map.get(sub_name, {})
-                        sub_count = sub_ts.get("count", "50/2") if sub_ts else "50/2"
-                        sub_cone = float(sub_ts.get("cone_length", 4000)) if sub_ts else 4000.0
-                        if sub_cone > 0 and sub_total > 0:
-                            divisor = THREAD_DIVISORS.get(sub_count, 19202.4)
-                            
-                            # Fetch wastage from the first row of this sub-category
-                            first_row_cons = {}
-                            if consumption_values:
-                                po_cons = consumption_values.get(po_name, {})
-                                cat_cons = po_cons.get(f"{cat_name}::{sub_name}", {}) if isinstance(po_cons, dict) else {}
-                                first_row_cons = cat_cons.get("0", {}) if isinstance(cat_cons, dict) else {}
-                            wastage = float(first_row_cons.get("wastage", 5))
-
-                            base_weight = sub_total * (sub_cone / divisor)
-                            weight_with_wastage = base_weight * (1 + wastage / 100)
-                            all_thread_weight_lbs += math.ceil(weight_with_wastage)
+                    all_thread_total = float(cat_data.get("_computed_all_thread_total", 0.0))
+                    all_thread_weight_lbs = int(cat_data.get("_computed_all_thread_weight_lbs", 0))
 
                     if all_thread_total > 0:
                         summary_parts = [

@@ -27,14 +27,120 @@ export default function ExportButton() {
                 }
             });
 
-            // Filter out excluded categories from the deep groupedData copy
             const cleanData = JSON.parse(JSON.stringify(groupedData));
+
+            const excludedCols = ["item category", "item description", "material name", "material", "description", "item", "accessories", "accessory", "trims", "trim"];
+            const filteredHeaders = (groupedData.headers || []).filter((h: string) => {
+                return !excludedCols.some(ex => h.toLowerCase().includes(ex));
+            });
+            cleanData.headers = filteredHeaders;
+
+            const THREAD_DIVISORS: Record<string, number> = {
+                "50/2": 19202.4, "40/2": 15362, "60/2": 23042.88, "20/2": 7680.96, "20/3": 5120.64
+            };
+
+            const getQty = (row: any) => {
+                const h = filteredHeaders.find((h: string) => h.toLowerCase().includes("qty") || h.toLowerCase().includes("quantity"));
+                if (!h) return 0;
+                const v = String(row[h]).replace(/,/g, "");
+                return parseFloat(v) || 0;
+            };
+
+            const getCons = (po: string, catKey: string, subKey: string, rowIdx: number) => {
+                const ck = subKey === "_flat" ? catKey : `${catKey}::${subKey}`;
+                return consumptionValues[po]?.[ck]?.[String(rowIdx)]?.consumption ?? 1;
+            };
+
+            const getWastage = (po: string, catKey: string, subKey: string, rowIdx: number) => {
+                const ck = subKey === "_flat" ? catKey : `${catKey}::${subKey}`;
+                return consumptionValues[po]?.[ck]?.[String(rowIdx)]?.wastage ?? 5;
+            };
+
             if (cleanData.po_groups) {
                 for (const po in cleanData.po_groups) {
                     const cats = cleanData.po_groups[po].categories;
-                    for (const excluded of excludedCategories) {
-                        if (cats[excluded]) {
-                            delete cats[excluded];
+                    for (const catName in cats) {
+                        if (excludedCategories.includes(catName)) {
+                            delete cats[catName];
+                            continue;
+                        }
+
+                        const catData = cats[catName];
+                        const isThread = catName.toLowerCase().includes("thread") || catName.toLowerCase().includes("sewing");
+
+                        let allThreadTotal = 0;
+                        let allThreadWeightLbs = 0;
+
+                        const processSubGroup = (subName: string, rows: any[]) => {
+                            let subTotal = 0;
+                            let subQty = 0;
+
+                            rows.forEach((row: any, idx: number) => {
+                                const qty = getQty(row);
+                                subQty += qty;
+                                const cons = getCons(po, catName, subName, idx);
+                                const was = getWastage(po, catName, subName, idx);
+
+                                let rowTotal = qty * cons;
+                                if (!isThread) {
+                                    rowTotal = rowTotal * (1 + was / 100);
+                                } else {
+                                    const fraction = rowTotal - Math.floor(rowTotal);
+                                    rowTotal = fraction >= 0.5 ? Math.ceil(rowTotal) : Math.floor(rowTotal);
+                                }
+
+                                row._computed_qty = qty;
+                                row._computed_total_req = rowTotal;
+                                row._computed_cons = cons;
+                                row._computed_was = was;
+                                subTotal += rowTotal;
+                            });
+
+                            catData._computed_sub_groups = catData._computed_sub_groups || {};
+
+                            if (isThread) {
+                                allThreadTotal += subTotal;
+                                const ts = threadSettingsMap[subName] || { count: "50/2", cone_length: 4000, wastage: 5 };
+                                const divisor = THREAD_DIVISORS[ts.count] || 19202.4;
+                                let rawWeight = ts.cone_length > 0 && subTotal > 0 ? subTotal * (ts.cone_length / divisor) : 0;
+                                if (rawWeight > 0) {
+                                    rawWeight = rawWeight * (1 + ts.wastage / 100);
+                                }
+                                const tw = Math.ceil(rawWeight);
+                                allThreadWeightLbs += tw;
+                                catData._computed_sub_groups[subName] = {
+                                    grand_total: subTotal,
+                                    grand_qty: subQty,
+                                    thread_weight_lbs: tw
+                                };
+                            } else {
+                                catData._computed_sub_groups[subName] = { grand_total: subTotal, grand_qty: subQty };
+                            }
+                        };
+
+                        if (catData && typeof catData === "object" && "_sub_groups" in catData) {
+                            let emptySubGroupsCount = 0;
+                            const totalSubGroups = Object.keys(catData._sub_groups).length;
+                            for (const subName in catData._sub_groups) {
+                                if (!catData._sub_groups[subName] || catData._sub_groups[subName].length === 0) {
+                                    delete catData._sub_groups[subName];
+                                    emptySubGroupsCount++;
+                                } else {
+                                    processSubGroup(subName, catData._sub_groups[subName]);
+                                }
+                            }
+                            if (totalSubGroups > 0 && emptySubGroupsCount === totalSubGroups) {
+                                delete cats[catName];
+                            } else if (isThread) {
+                                catData._computed_all_thread_total = allThreadTotal;
+                                catData._computed_all_thread_weight_lbs = allThreadWeightLbs;
+                            }
+                        } else if (Array.isArray(catData)) {
+                            if (catData.length === 0) {
+                                delete cats[catName];
+                            } else {
+                                processSubGroup("_flat", catData);
+                            }
                         }
                     }
                 }

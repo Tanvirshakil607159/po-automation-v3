@@ -82,6 +82,7 @@ interface AppState {
     toggleCategoryExclusion: (category: string) => void;
     moveItem: (po: string, srcCat: string, srcSubCat: string | null, srcIdx: number, destCat: string, destSubCat: string | null) => void;
     addSubCategory: (po: string, cat: string, subCat: string) => void;
+    editItemData: (po: string, cat: string, subCat: string | null, rowIdx: number, key: string, newValue: string) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -250,6 +251,36 @@ export const useAppStore = create<AppState>((set) => ({
                     catData._sub_groups[subCat] = [];
                 }
             }
+            return { groupedData: newData };
+        }),
+
+    editItemData: (po, cat, subCat, rowIdx, key, newValue) =>
+        set((state) => {
+            if (!state.groupedData) return state;
+            const newData = JSON.parse(JSON.stringify(state.groupedData)) as GroupedData;
+            const poData = newData.po_groups[po];
+            if (!poData || !poData.categories || !poData.categories[cat]) return state;
+
+            const catData = poData.categories[cat];
+
+            if (subCat === null) {
+                // Flat item list
+                if (Array.isArray(catData)) {
+                    if (rowIdx >= 0 && rowIdx < catData.length) {
+                        catData[rowIdx][key] = newValue;
+                    }
+                }
+            } else {
+                // Categorized into sub-groups
+                if (catData && typeof catData === "object" && "_sub_groups" in catData) {
+                    const typedCat = catData as any;
+                    const subArray = typedCat._sub_groups[subCat];
+                    if (Array.isArray(subArray) && rowIdx >= 0 && rowIdx < subArray.length) {
+                        subArray[rowIdx][key] = newValue;
+                    }
+                }
+            }
+
             return { groupedData: newData };
         }),
 }));
