@@ -5,7 +5,7 @@ import { useAppStore } from "@/lib/store";
 import { exportPDF } from "@/lib/api";
 
 export default function ExportButton() {
-    const { groupedData, consumptionValues, uploadResult } = useAppStore();
+    const { groupedData, consumptionValues, uploadResult, excludedCategories } = useAppStore();
     const [exporting, setExporting] = useState(false);
 
     if (!groupedData) return null;
@@ -14,17 +14,33 @@ export default function ExportButton() {
         setExporting(true);
         try {
             const filename = uploadResult?.filename?.replace(".pdf", "") || "PO_Export";
-            const threadSettingsMap: Record<string, { count: string; cone_length: number }> = {};
+            const threadSettingsMap: Record<string, { count: string; cone_length: number; wastage: number }> = {};
             const countSelects = document.querySelectorAll<HTMLSelectElement>('[id^="thread-count-"]');
             countSelects.forEach((sel) => {
                 const subKey = sel.id.replace("thread-count-", "");
-                const coneInput = document.getElementById(`cone-length-${subKey}`) as HTMLInputElement | null;
-                const coneVal = coneInput ? parseFloat(coneInput.value) || 0 : 0;
+                const coneInput = document.getElementById(`cone-length-${subKey}`) as HTMLSelectElement | null;
+                const coneVal = coneInput ? parseInt(coneInput.value) || 4000 : 4000;
+                const wastageInput = document.getElementById(`wastage-${subKey}`) as HTMLInputElement | null;
+                const wastageVal = wastageInput ? parseFloat(wastageInput.value) || 0 : 5;
                 if (coneVal > 0) {
-                    threadSettingsMap[subKey] = { count: sel.value, cone_length: coneVal };
+                    threadSettingsMap[subKey] = { count: sel.value, cone_length: coneVal, wastage: wastageVal };
                 }
             });
-            await exportPDF(groupedData as any, consumptionValues, filename,
+
+            // Filter out excluded categories from the deep groupedData copy
+            const cleanData = JSON.parse(JSON.stringify(groupedData));
+            if (cleanData.po_groups) {
+                for (const po in cleanData.po_groups) {
+                    const cats = cleanData.po_groups[po].categories;
+                    for (const excluded of excludedCategories) {
+                        if (cats[excluded]) {
+                            delete cats[excluded];
+                        }
+                    }
+                }
+            }
+
+            await exportPDF(cleanData, consumptionValues, filename,
                 Object.keys(threadSettingsMap).length > 0 ? threadSettingsMap : null);
         } catch (err) {
             console.error("Export failed:", err);

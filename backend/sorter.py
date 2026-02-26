@@ -293,8 +293,43 @@ def group_by_item(rows: list[dict]) -> dict:
         else:
             cat_val = "All Items"
 
-        # Skip rows where item name is a repeated PDF header
-        if not cat_val or cat_val.lower().strip() in JUNK_ITEM_KEYWORDS:
+        # Skip rows where item name is a repeated PDF header or junk empty values
+        if not cat_val:
+            skipped += 1
+            continue
+            
+        cat_low = cat_val.lower().strip()
+        cat_low_clean = re.sub(r'[^\w\s]', '', cat_low).strip().replace(" ", "")
+        
+        is_junk = False
+        if cat_low in JUNK_ITEM_KEYWORDS or cat_low_clean in [j.replace(" ", "") for j in JUNK_ITEM_KEYWORDS]:
+            is_junk = True
+        
+        # Aggressive substring block for shipping/banking fields that might have messy OCR/parsing
+        # We check BOTH the category name AND all other cell values in the row
+        junk_kws = [
+            "advisingbank", "applicantbank", "shippedby", "transshipment", 
+            "beneficiary", "portofloading", "portofdischarge", "countryof", 
+            "latestship", "paymentterm", "incoterm", "termsandcondition"
+        ]
+        
+        for junk_kw in junk_kws:
+            if junk_kw in cat_low_clean:
+                is_junk = True
+                break
+                
+        # If not caught by category name, scan all row values just in case it shifted columns
+        if not is_junk:
+            for val in row.values():
+                val_clean = re.sub(r'[^\w\s]', '', str(val).lower()).strip().replace(" ", "")
+                for junk_kw in junk_kws:
+                    if junk_kw in val_clean:
+                        is_junk = True
+                        break
+                if is_junk:
+                    break
+
+        if is_junk:
             skipped += 1
             continue
 

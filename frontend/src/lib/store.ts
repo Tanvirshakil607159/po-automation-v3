@@ -78,6 +78,9 @@ interface AppState {
     setConsumption: (po: string, category: string, rowIndex: number, field: "consumption" | "wastage", value: number) => void;
     setHistory: (items: HistoryItem[]) => void;
     clearUpload: () => void;
+    excludedCategories: string[];
+    toggleCategoryExclusion: (category: string) => void;
+    moveItem: (po: string, srcCat: string, srcSubCat: string | null, srcIdx: number, destCat: string, destSubCat: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -88,6 +91,7 @@ export const useAppStore = create<AppState>((set) => ({
     isUploading: false,
     consumptionValues: {},
     history: [],
+    excludedCategories: [],
 
     setUploadResult: (result) => {
         // Migrate data to ensure it's in the new po_groups format
@@ -127,6 +131,7 @@ export const useAppStore = create<AppState>((set) => ({
             activePO: firstPO,
             activeTab: firstCat,
             consumptionValues: initValues,
+            excludedCategories: [],
         });
     },
 
@@ -162,5 +167,72 @@ export const useAppStore = create<AppState>((set) => ({
             activePO: "",
             activeTab: "",
             consumptionValues: {},
+            excludedCategories: [],
+        }),
+
+    toggleCategoryExclusion: (category) =>
+        set((state) => {
+            const excluded = [...state.excludedCategories];
+            const idx = excluded.indexOf(category);
+            if (idx >= 0) {
+                excluded.splice(idx, 1);
+            } else {
+                excluded.push(category);
+            }
+            return { excludedCategories: excluded };
+        }),
+
+    moveItem: (po, srcCat, srcSubCat, srcIdx, destCat, destSubCat) =>
+        set((state) => {
+            if (!state.groupedData) return state;
+
+            // Deep copy current grouped data
+            const newData = JSON.parse(JSON.stringify(state.groupedData)) as GroupedData;
+            const poData = newData.po_groups[po];
+            if (!poData || !poData.categories) return state;
+
+            // 1. Find and Extract Source Row
+            let srcArray: RowData[] = [];
+            const srcCatData = poData.categories[srcCat] as any;
+
+            if (srcSubCat && srcCatData && typeof srcCatData === "object" && "_sub_groups" in srcCatData) {
+                srcArray = srcCatData._sub_groups[srcSubCat];
+            } else if (Array.isArray(srcCatData)) {
+                srcArray = srcCatData;
+            }
+
+            if (!srcArray || srcArray.length <= srcIdx) return state;
+
+            // Remove the item from its original position
+            const [itemToMove] = srcArray.splice(srcIdx, 1);
+
+            // 2. Insert into Destination
+            const destCatData = poData.categories[destCat] as any;
+            if (!destCatData) {
+                // Should theoretically not happen if only dropping on existing categories
+                console.warn("Destination category does not exist:", destCat);
+                return state;
+            }
+
+            let destArray: RowData[] = [];
+            if (destSubCat && typeof destCatData === "object" && "_sub_groups" in destCatData) {
+                if (!destCatData._sub_groups[destSubCat]) {
+                    destCatData._sub_groups[destSubCat] = [];
+                }
+                destArray = destCatData._sub_groups[destSubCat];
+            } else if (Array.isArray(destCatData)) {
+                destArray = destCatData;
+            } else {
+                console.warn("Destination is malformed:", destCat, destSubCat);
+                return state;
+            }
+
+            destArray.push(itemToMove);
+
+            // We do not strictly migrate consumption values here because indices shift. 
+            // It's safer to let the user re-enter consumption (or it defaults to 1/5) when moved to a new sub-category,
+            // otherwise shifting array indices across categories gets extremely messy.
+
+            return { groupedData: newData };
         }),
 }));

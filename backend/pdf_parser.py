@@ -72,12 +72,18 @@ def _row_contains_stop_keyword(cells: list[str]) -> bool:
 
 def _should_skip_cell_text(text: str) -> bool:
     """Check if text contains any irrelevant LC/shipping keyword."""
+    if not text:
+        return False
+        
     t = re.sub(r"[\s_]+", " ", text.lower().strip())
-    t_nospace = re.sub(r"\s+", "", t)
+    t_nospace = re.sub(r"[^\w]", "", t)  # Strip all punctuation and spaces
+    
     for kw in SKIP_KEYWORDS:
         kw_nospace = kw.replace(" ", "")
+        # Aggressive check: look at both the spaced and unspaced versions
         if kw in t or kw_nospace in t_nospace:
             return True
+            
     return False
 
 
