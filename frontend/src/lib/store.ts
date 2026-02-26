@@ -81,6 +81,7 @@ interface AppState {
     excludedCategories: string[];
     toggleCategoryExclusion: (category: string) => void;
     moveItem: (po: string, srcCat: string, srcSubCat: string | null, srcIdx: number, destCat: string, destSubCat: string | null) => void;
+    addSubCategory: (po: string, cat: string, subCat: string) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -233,6 +234,22 @@ export const useAppStore = create<AppState>((set) => ({
             // It's safer to let the user re-enter consumption (or it defaults to 1/5) when moved to a new sub-category,
             // otherwise shifting array indices across categories gets extremely messy.
 
+            return { groupedData: newData };
+        }),
+
+    addSubCategory: (po, cat, subCat) =>
+        set((state) => {
+            if (!state.groupedData) return state;
+            const newData = JSON.parse(JSON.stringify(state.groupedData)) as GroupedData;
+            const poData = newData.po_groups[po];
+            if (!poData || !poData.categories || !poData.categories[cat]) return state;
+
+            const catData = poData.categories[cat] as any;
+            if (catData && typeof catData === "object" && "_sub_groups" in catData) {
+                if (!catData._sub_groups[subCat]) {
+                    catData._sub_groups[subCat] = [];
+                }
+            }
             return { groupedData: newData };
         }),
 }));

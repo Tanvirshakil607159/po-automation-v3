@@ -15,7 +15,7 @@ interface ThreadSetting { count: string; coneLength: number; wastage: number; }
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 export default function DataTable() {
-    const { groupedData, activePO, consumptionValues, setConsumption, excludedCategories, toggleCategoryExclusion, moveItem } = useAppStore();
+    const { groupedData, activePO, consumptionValues, setConsumption, excludedCategories, toggleCategoryExclusion, moveItem, addSubCategory } = useAppStore();
     const [threadSettings, setThreadSettings] = useState<Record<string, ThreadSetting>>({});
     const [dragOverCat, setDragOverCat] = useState<string | null>(null);
     const [dragOverSubCat, setDragOverSubCat] = useState<string | null>(null);
@@ -260,9 +260,24 @@ export default function DataTable() {
                                 )}
                             </h3>
                             {hasSubGroups && (
-                                <span className="text-[11px] font-medium text-[#a1a1aa] dark:text-[#52525b]">
-                                    {Object.keys(catData._sub_groups).length} groups
-                                </span>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => {
+                                            const name = window.prompt("Enter new sub-category name:");
+                                            if (name && name.trim()) {
+                                                addSubCategory(activePO, catName, name.trim());
+                                            }
+                                        }}
+                                        title="Add new sub-category"
+                                        className="text-[11px] font-medium text-[#2563eb] hover:text-[#1d4ed8] dark:text-[#60a5fa] dark:hover:text-[#3b82f6] flex items-center gap-1 bg-[#eff6ff] hover:bg-[#dbeafe] dark:bg-[#1e3a8a]/30 dark:hover:bg-[#1e3a8a]/50 px-2 py-1 rounded transition-colors"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                        Add Sub-category
+                                    </button>
+                                    <span className="text-[11px] font-medium text-[#a1a1aa] dark:text-[#52525b]">
+                                        {Object.keys(catData._sub_groups).length} groups
+                                    </span>
+                                </div>
                             )}
                             {!hasSubGroups && Array.isArray(catData) && (
                                 <span className="text-[11px] text-[#a1a1aa] dark:text-[#52525b]">{catData.length} items</span>

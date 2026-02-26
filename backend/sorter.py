@@ -19,11 +19,16 @@ ITEM_COLUMN_KEYWORDS = [
     "particular", "particulars",
 ]
 
-# Keywords that indicate a pantone column (preferred for thread sorting)
+# Keywords that indicate a pantone column
 PANTONE_COLUMN_KEYWORDS = [
     "pantone", "panton", "pantone no", "pantone code", "pantone ref",
     "pantone number", "pantone #", "pms", "pms no", "pms code",
-    "panton no", "panton code", "dimension",
+    "panton no", "panton code",
+]
+
+# Keywords that indicate a dimension/size column
+DIMENSION_COLUMN_KEYWORDS = [
+    "dimension", "dim", "size", "ticket", "count", "measurement"
 ]
 
 # Keywords that indicate a color column (fallback)
@@ -273,9 +278,10 @@ def group_by_item(rows: list[dict]) -> dict:
     grouping_col = _find_column_by_keywords(headers, ITEM_COLUMN_KEYWORDS)
     pantone_col = _find_column_by_keywords(headers, PANTONE_COLUMN_KEYWORDS)
     color_col = _find_column_by_keywords(headers, COLOR_COLUMN_KEYWORDS)
+    dimension_col = _find_column_by_keywords(headers, DIMENSION_COLUMN_KEYWORDS)
 
-    po_groups: dict[str, dict[str, list[dict]]] = {}
-    all_categories_set: set[str] = set()
+    po_groups = {}
+    all_categories_set = set()
     skipped = 0
 
     for row in rows:
@@ -337,23 +343,44 @@ def group_by_item(rows: list[dict]) -> dict:
         if _is_thread_item(cat_val):
             cat_val = "Sewing Thread"
 
-        # Extract Pantone code for sub-grouping (applies to ALL categories)
-        pantone_val = ""
-        if pantone_col:
-            pv = str(row.get(pantone_col, "")).strip()
-            if pv and pv.lower() not in ("", "n/a", "na", "-", "none"):
-                pantone_val = pv
-        if not pantone_val:
-            # Scan all cell values for pantone-like patterns
-            for key, value in row.items():
-                vs = str(value).strip()
-                if re.search(r'pantone|panton|pms', vs, re.IGNORECASE):
-                    pantone_val = vs
-                    break
-        if pantone_val:
-            pantone_key = _dedup_pantone(pantone_val)
+        if cat_val == "Sewing Thread":
+            sub_key_val = ""
+            if dimension_col:
+                dv = str(row.get(dimension_col, "")).strip()
+                if dv and dv.lower() not in ("", "n/a", "na", "-", "none"):
+                    sub_key_val = dv
+            if not sub_key_val and color_col:
+                cv = str(row.get(color_col, "")).strip()
+                if cv and cv.lower() not in ("", "n/a", "na", "-", "none"):
+                    sub_key_val = cv
+            if not sub_key_val:
+                # Fallback to scanning for anything that looks like a dimension or count
+                for _, value in row.items():
+                    vs = str(value).strip()
+                    if re.search(r'\b(tex\s*\d+|t-\d+|ticket\s*\d+|\d+\s*m)\b', vs, re.IGNORECASE):
+                        sub_key_val = vs
+                        break
+            if not sub_key_val:
+                sub_key_val = "Other"
+            pantone_key = sub_key_val
         else:
-            pantone_key = "Other"
+            # Extract Pantone code for standard items
+            pantone_val = ""
+            if pantone_col:
+                pv = str(row.get(pantone_col, "")).strip()
+                if pv and pv.lower() not in ("", "n/a", "na", "-", "none"):
+                    pantone_val = pv
+            if not pantone_val:
+                # Scan all cell values for pantone-like patterns
+                for _, value in row.items():
+                    vs = str(value).strip()
+                    if re.search(r'pantone|panton|pms', vs, re.IGNORECASE):
+                        pantone_val = vs
+                        break
+            if pantone_val:
+                pantone_key = _dedup_pantone(pantone_val)
+            else:
+                pantone_key = "Other"
 
         if po_val not in po_groups:
             po_groups[po_val] = {}
