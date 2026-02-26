@@ -9,8 +9,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "PO Sorter — Garment Accessories Automation",
-  description:
-    "Automatically extract, sort, and calculate consumption from Purchase Order PDFs.",
+  description: "Upload PO PDFs, sort by item, calculate consumption.",
 };
 
 export default function RootLayout({
@@ -20,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased bg-[#f4f1ec] text-[#3b3730]`}>
         {children}
       </body>
     </html>
