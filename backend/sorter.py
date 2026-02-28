@@ -11,6 +11,13 @@ PO_COLUMN_KEYWORDS = [
     "po", "p.o.", "p.o",
 ]
 
+# Keywords that likely indicate the style/ref column
+STYLE_COLUMN_KEYWORDS = [
+    "style no", "style", "style number", "style #", "style no.",
+    "ref no", "ref", "reference no", "reference", "ref.", "ref. no",
+    "buyer style", "style/ref", "style / ref", "style name"
+]
+
 # Keywords that likely indicate the item/material grouping column
 ITEM_COLUMN_KEYWORDS = [
     "item description", "item name", "material name", "material",
@@ -293,6 +300,7 @@ def group_by_item(rows: list[dict]) -> dict:
     pantone_col = _find_column_by_keywords(headers, PANTONE_COLUMN_KEYWORDS)
     color_col = _find_column_by_keywords(headers, COLOR_COLUMN_KEYWORDS)
     dimension_col = _find_column_by_keywords(headers, DIMENSION_COLUMN_KEYWORDS)
+    style_col = _find_column_by_keywords(headers, STYLE_COLUMN_KEYWORDS)
 
     po_groups = {}
     all_categories_set = set()
@@ -382,8 +390,18 @@ def group_by_item(rows: list[dict]) -> dict:
                 sub_key_val = "Other"
             pantone_key = sub_key_val
         elif cat_val == "Care Label":
-            # For Care Labels, group them strictly by their Purchase Order number.
-            pantone_key = f"PO {po_val}" if po_val and po_val != "All Orders" else "All POs"
+            # For Care Labels, group them strictly by their Style No and Purchase Order number.
+            style_val = ""
+            if style_col:
+                sv = str(row.get(style_col, "")).strip()
+                if sv and sv.lower() not in ("", "n/a", "na", "-", "none"):
+                    style_val = sv
+            
+            if style_val:
+                pantone_key = f"{style_val}--PO {po_val}" if po_val and po_val != "All Orders" else style_val
+            else:
+                pantone_key = f"PO {po_val}" if po_val and po_val != "All Orders" else "All POs"
+                
             # Override the main grouping to bundle ALL Care Labels across POs into one major tab
             po_val = "Care Label"
         else:
