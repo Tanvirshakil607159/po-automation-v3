@@ -45,11 +45,6 @@ THREAD_KEYWORDS = [
     "embroidery thread",
 ]
 
-# Keywords that identify care label items
-CARE_LABEL_KEYWORDS = [
-    "care label", "care-label", "c/label", "c.label", "c label"
-]
-
 # ── Common garment/textile colors for extraction from text ──────────────
 KNOWN_COLORS = [
     # Basic colors
@@ -145,15 +140,6 @@ def _is_thread_item(category_name: str) -> bool:
     """Check if a category name refers to sewing thread."""
     cat_low = category_name.lower()
     for kw in THREAD_KEYWORDS:
-        if kw in cat_low:
-            return True
-    return False
-
-
-def _is_care_label_item(category_name: str) -> bool:
-    """Check if a category name refers to a care label."""
-    cat_low = category_name.lower()
-    for kw in CARE_LABEL_KEYWORDS:
         if kw in cat_low:
             return True
     return False
@@ -356,10 +342,6 @@ def group_by_item(rows: list[dict]) -> dict:
         # Unify sewing thread variants under one main category name
         if _is_thread_item(cat_val):
             cat_val = "Sewing Thread"
-        
-        # Unify care label variants under one main category name
-        if _is_care_label_item(cat_val):
-            cat_val = "Care Label"
 
         if cat_val == "Sewing Thread":
             sub_key_val = ""
@@ -380,40 +362,6 @@ def group_by_item(rows: list[dict]) -> dict:
                         break
             if not sub_key_val:
                 sub_key_val = "Other"
-            pantone_key = sub_key_val
-        elif cat_val == "Care Label":
-            sub_key_val = ""
-            # Priority 1: Extract size from Dimension/Size column
-            if dimension_col:
-                dv = str(row.get(dimension_col, "")).strip()
-                if dv and dv.lower() not in ("", "n/a", "na", "-", "none"):
-                    sub_key_val = dv.upper()
-            
-            if not sub_key_val:
-                # Priority 2: Regex scan across all row values for standard apparel sizes
-                for _, value in row.items():
-                    vs = str(value).strip()
-                    # Match standard sizes like S, M, L, XL, XXL, 3XL or sizes like 28, 30, 32
-                    if re.search(r'\b(XXS|XS|S|M|L|XL|XXL|XXXL|\d{1,2}XL|\d{2})\b', vs, re.IGNORECASE):
-                         # Extract just the size portion
-                         match = re.search(r'\b(XXS|XS|S|M|L|XL|XXL|XXXL|\d{1,2}XL|\d{2})\b', vs, re.IGNORECASE)
-                         if match:
-                             sub_key_val = match.group(1).upper()
-                             break
-
-            if not sub_key_val:
-                # Priority 3: Regex scan across all row values for geometric dimensions (e.g., 30x40)
-                 for _, value in row.items():
-                    vs = str(value).strip()
-                    if re.search(r'\b(\d+\s*[xX*]\s*\d+)\b', vs):
-                         match = re.search(r'\b(\d+\s*[xX*]\s*\d+)\b', vs)
-                         if match:
-                             sub_key_val = match.group(1).upper()
-                             break
-
-            if not sub_key_val:
-                sub_key_val = "Other Size"
-            
             pantone_key = sub_key_val
         else:
             # Extract Pantone code for standard items
