@@ -45,6 +45,11 @@ THREAD_KEYWORDS = [
     "embroidery thread",
 ]
 
+# Keywords that identify care label items
+CARE_LABEL_KEYWORDS = [
+    "care label", "care-label", "c/label", "c.label", "c label"
+]
+
 # ── Common garment/textile colors for extraction from text ──────────────
 KNOWN_COLORS = [
     # Basic colors
@@ -140,6 +145,15 @@ def _is_thread_item(category_name: str) -> bool:
     """Check if a category name refers to sewing thread."""
     cat_low = category_name.lower()
     for kw in THREAD_KEYWORDS:
+        if kw in cat_low:
+            return True
+    return False
+
+
+def _is_care_label_item(category_name: str) -> bool:
+    """Check if a category name refers to a care label."""
+    cat_low = category_name.lower()
+    for kw in CARE_LABEL_KEYWORDS:
         if kw in cat_low:
             return True
     return False
@@ -343,6 +357,10 @@ def group_by_item(rows: list[dict]) -> dict:
         if _is_thread_item(cat_val):
             cat_val = "Sewing Thread"
 
+        # Unify care label variants under one main category name
+        if _is_care_label_item(cat_val):
+            cat_val = "Care Label"
+
         if cat_val == "Sewing Thread":
             sub_key_val = ""
             if dimension_col:
@@ -363,6 +381,9 @@ def group_by_item(rows: list[dict]) -> dict:
             if not sub_key_val:
                 sub_key_val = "Other"
             pantone_key = sub_key_val
+        elif cat_val == "Care Label":
+            # For Care Labels, group them strictly by their Purchase Order number.
+            pantone_key = f"PO {po_val}" if po_val and po_val != "All Orders" else "All POs"
         else:
             # Extract Pantone code for standard items
             pantone_val = ""
