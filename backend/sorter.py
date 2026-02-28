@@ -35,7 +35,7 @@ PANTONE_COLUMN_KEYWORDS = [
 
 # Keywords that indicate a dimension/size column
 DIMENSION_COLUMN_KEYWORDS = [
-    "dimension", "dim", "size", "ticket", "count", "measurement"
+    "dimension", "dimention", "dim", "size", "ticket", "count", "measurement"
 ]
 
 # Keywords that indicate a color column (fallback)
@@ -55,6 +55,31 @@ THREAD_KEYWORDS = [
 # Keywords that identify care label items
 CARE_LABEL_KEYWORDS = [
     "care label", "care-label", "c/label", "c.label", "c label"
+]
+
+# Keywords that identify hanger loop items
+HANGER_LOOP_KEYWORDS = [
+    "hanger loop", "h/loop", "h.loop", "hanger-loop"
+]
+
+# Keywords that identify woven main label items
+WOVEN_MAIN_LABEL_KEYWORDS = [
+    "woven main label", "main label", "m/label", "m.label"
+]
+
+# Keywords that identify woven size label items
+WOVEN_SIZE_LABEL_KEYWORDS = [
+    "woven size label", "size label", "s/label", "s.label"
+]
+
+# Keywords that identify name label items
+NAME_LABEL_KEYWORDS = [
+    "name label", "n/label", "n.label"
+]
+
+# Keywords that identify tab label items
+TAB_LABEL_KEYWORDS = [
+    "tab label", "t/label", "t.label", "woven tab label"
 ]
 
 # ── Common garment/textile colors for extraction from text ──────────────
@@ -165,6 +190,45 @@ def _is_care_label_item(category_name: str) -> bool:
             return True
     return False
 
+def _is_hanger_loop_item(category_name: str) -> bool:
+    """Check if a category name refers to a hanger loop."""
+    cat_low = category_name.lower()
+    for kw in HANGER_LOOP_KEYWORDS:
+        if kw in cat_low:
+            return True
+    return False
+
+def _is_woven_main_label_item(category_name: str) -> bool:
+    """Check if a category name refers to a woven main label."""
+    cat_low = category_name.lower()
+    for kw in WOVEN_MAIN_LABEL_KEYWORDS:
+        if kw in cat_low:
+            return True
+    return False
+
+def _is_woven_size_label_item(category_name: str) -> bool:
+    """Check if a category name refers to a woven size label."""
+    cat_low = category_name.lower()
+    for kw in WOVEN_SIZE_LABEL_KEYWORDS:
+        if kw in cat_low:
+            return True
+    return False
+
+def _is_name_label_item(category_name: str) -> bool:
+    """Check if a category name refers to a name label."""
+    cat_low = category_name.lower()
+    for kw in NAME_LABEL_KEYWORDS:
+        if kw in cat_low:
+            return True
+    return False
+
+def _is_tab_label_item(category_name: str) -> bool:
+    """Check if a category name refers to a tab label."""
+    cat_low = category_name.lower()
+    for kw in TAB_LABEL_KEYWORDS:
+        if kw in cat_low:
+            return True
+    return False
 
 def _extract_color_from_text(text: str) -> str | None:
     """Extract a color name from free text using known color list."""
@@ -369,6 +433,26 @@ def group_by_item(rows: list[dict]) -> dict:
         if _is_care_label_item(cat_val):
             cat_val = "Care Label"
 
+        # Unify hanger loop variants under one main category name
+        if _is_hanger_loop_item(cat_val):
+            cat_val = "Hanger Loop"
+
+        # Unify woven main label variants under one main category name
+        if _is_woven_main_label_item(cat_val):
+            cat_val = "Woven Main Label"
+
+        # Unify woven size label variants under one main category name
+        if _is_woven_size_label_item(cat_val):
+            cat_val = "Woven Size Label"
+
+        # Unify name label variants under one main category name
+        if _is_name_label_item(cat_val):
+            cat_val = "Name Label"
+
+        # Unify tab label variants under one main category name
+        if _is_tab_label_item(cat_val):
+            cat_val = "Tab Label"
+
         if cat_val == "Sewing Thread":
             sub_key_val = ""
             if dimension_col:
@@ -404,6 +488,91 @@ def group_by_item(rows: list[dict]) -> dict:
                 
             # Override the main grouping to bundle ALL Care Labels across POs into one major tab
             po_val = "Care Label"
+        elif cat_val in ("Hanger Loop", "Woven Main Label", "Name Label", "Tab Label"):
+            style_val = ""
+            if style_col:
+                sv = str(row.get(style_col, "")).strip()
+                if sv and sv.lower() not in ("", "n/a", "na", "-", "none"):
+                    style_val = sv
+            
+            # Sub Category: Order No/Style No.
+            if style_val and po_val and po_val != "All Orders":
+                new_cat_val = f"{style_val}--PO {po_val}"
+            elif style_val:
+                new_cat_val = style_val
+            elif po_val and po_val != "All Orders":
+                new_cat_val = f"PO {po_val}"
+            else:
+                new_cat_val = cat_val
+                
+            # Main Category: Override top-level grouping
+            po_val = cat_val
+            cat_val = new_cat_val
+            
+            # Sub-Sub Category: Dimension
+            dim_val = ""
+            if dimension_col:
+                dv = str(row.get(dimension_col, "")).strip()
+                if dv and dv.lower() not in ("", "n/a", "na", "-", "none"):
+                    dim_val = dv
+            
+            if dim_val:
+                pantone_key = dim_val
+            else:
+                # Attempt regex search for dimensions
+                for _, value in row.items():
+                    vs = str(value).strip()
+                    if re.search(r'\b(\d+\s*[xX*]\s*\d+)\b', vs):
+                        match = re.search(r'\b(\d+\s*[xX*]\s*\d+)\b', vs)
+                        if match:
+                            dim_val = match.group(1).upper()
+                            break
+                
+                if dim_val:
+                    pantone_key = dim_val
+                else:
+                    pantone_key = "Other Dimension"
+        elif cat_val == "Woven Size Label":
+            style_val = ""
+            if style_col:
+                sv = str(row.get(style_col, "")).strip()
+                if sv and sv.lower() not in ("", "n/a", "na", "-", "none"):
+                    style_val = sv
+            
+            # Sub Category: Order No/Style No.
+            if style_val and po_val and po_val != "All Orders":
+                new_cat_val = f"{style_val}--PO {po_val}"
+            elif style_val:
+                new_cat_val = style_val
+            elif po_val and po_val != "All Orders":
+                new_cat_val = f"PO {po_val}"
+            else:
+                new_cat_val = cat_val
+                
+            # Main Category: Override top-level grouping
+            po_val = cat_val
+            cat_val = new_cat_val
+            
+            # Sub-Sub Category: Size
+            size_val = ""
+            
+            # Prioritize a dedicated 'Size' column specifically for Size Labels
+            size_exact_col = next((h for h in headers if "size" in h.lower().strip()), None)
+            if size_exact_col:
+                sv = str(row.get(size_exact_col, "")).strip()
+                if sv and sv.lower() not in ("", "n/a", "na", "-", "none"):
+                    size_val = sv
+                    
+            # Fallback to general dimension column if no Size column was found
+            if not size_val and dimension_col:
+                sv = str(row.get(dimension_col, "")).strip()
+                if sv and sv.lower() not in ("", "n/a", "na", "-", "none"):
+                    size_val = sv
+            
+            if size_val:
+                pantone_key = size_val
+            else:
+                pantone_key = "Other Size"
         else:
             # Extract Pantone code for standard items
             pantone_val = ""
@@ -442,8 +611,15 @@ def group_by_item(rows: list[dict]) -> dict:
         for cat_key in sorted(po_groups[po_key].keys()):
             cat_data = po_groups[po_key][cat_key]
             if isinstance(cat_data, dict) and "_sub_groups" in cat_data:
-                # Sort sub-groups alphabetically
-                cats[cat_key] = {"_sub_groups": dict(sorted(cat_data["_sub_groups"].items()))}
+                sub_keys = list(cat_data["_sub_groups"].keys())
+                
+                # If there is ONLY ONE sub-group, and it's essentially just generic ("Other") or matches the category
+                # we flatten the array to avoid an ugly redundant nesting title on the frontend
+                if len(sub_keys) == 1 and sub_keys[0] in ["Other", "Other Dimension", "Other Size", cat_key, ""]:
+                    cats[cat_key] = cat_data["_sub_groups"][sub_keys[0]]
+                else:
+                    # Sort sub-groups alphabetically
+                    cats[cat_key] = {"_sub_groups": dict(sorted(cat_data["_sub_groups"].items()))}
             else:
                 cats[cat_key] = cat_data
         sorted_po_groups[po_key] = {"categories": cats}
