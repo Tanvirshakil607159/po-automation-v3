@@ -384,6 +384,8 @@ def group_by_item(rows: list[dict]) -> dict:
         elif cat_val == "Care Label":
             # For Care Labels, group them strictly by their Purchase Order number.
             pantone_key = f"PO {po_val}" if po_val and po_val != "All Orders" else "All POs"
+            # Override the main grouping to bundle ALL Care Labels across POs into one major tab
+            po_val = "Care Label"
         else:
             # Extract Pantone code for standard items
             pantone_val = ""
