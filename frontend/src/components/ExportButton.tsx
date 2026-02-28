@@ -52,8 +52,10 @@ export default function ExportButton() {
             };
 
             const getWastage = (po: string, catKey: string, subKey: string, rowIdx: number) => {
+                const isLabelOrLoop = po.toLowerCase().includes("label") || catKey.toLowerCase().includes("label") || po.toLowerCase().includes("loop") || catKey.toLowerCase().includes("loop");
+                const defaultWastage = isLabelOrLoop ? 2 : 5;
                 const ck = subKey === "_flat" ? catKey : `${catKey}::${subKey}`;
-                return consumptionValues[po]?.[ck]?.[String(rowIdx)]?.wastage ?? 5;
+                return consumptionValues[po]?.[ck]?.[String(rowIdx)]?.wastage ?? defaultWastage;
             };
 
             if (cleanData.po_groups) {

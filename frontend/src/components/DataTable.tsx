@@ -42,8 +42,11 @@ export default function DataTable() {
 
     const getCons = (po: string, cat: string, subKey: string, rowIdx: number) =>
         consumptionValues[po]?.[`${cat}::${subKey}`]?.[String(rowIdx)]?.consumption ?? 1;
-    const getWastage = (po: string, cat: string, subKey: string, rowIdx: number) =>
-        consumptionValues[po]?.[`${cat}::${subKey}`]?.[String(rowIdx)]?.wastage ?? 5;
+    const getWastage = (po: string, cat: string, subKey: string, rowIdx: number) => {
+        const isLabelOrLoop = po.toLowerCase().includes("label") || cat.toLowerCase().includes("label") || po.toLowerCase().includes("loop") || cat.toLowerCase().includes("loop");
+        const defaultWastage = isLabelOrLoop ? 2 : 5;
+        return consumptionValues[po]?.[`${cat}::${subKey}`]?.[String(rowIdx)]?.wastage ?? defaultWastage;
+    };
     const calcTotal = (po: string, cat: string, subKey: string, rowIdx: number, qty: number, isThread: boolean = false) => {
         const c = getCons(po, cat, subKey, rowIdx);
         if (isThread) return qty * c;
@@ -53,8 +56,11 @@ export default function DataTable() {
 
     const getConsFlat = (po: string, cat: string, rowIdx: number) =>
         consumptionValues[po]?.[cat]?.[String(rowIdx)]?.consumption ?? 1;
-    const getWastageFlat = (po: string, cat: string, rowIdx: number) =>
-        consumptionValues[po]?.[cat]?.[String(rowIdx)]?.wastage ?? 5;
+    const getWastageFlat = (po: string, cat: string, rowIdx: number) => {
+        const isLabelOrLoop = po.toLowerCase().includes("label") || cat.toLowerCase().includes("label") || po.toLowerCase().includes("loop") || cat.toLowerCase().includes("loop");
+        const defaultWastage = isLabelOrLoop ? 2 : 5;
+        return consumptionValues[po]?.[cat]?.[String(rowIdx)]?.wastage ?? defaultWastage;
+    };
     const calcTotalFlat = (po: string, cat: string, rowIdx: number, qty: number, isThread: boolean = false) => {
         const c = getConsFlat(po, cat, rowIdx);
         if (isThread) return qty * c;

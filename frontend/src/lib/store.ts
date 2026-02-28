@@ -61,6 +61,11 @@ function migrateData(raw: Record<string, unknown>): GroupedData {
     };
 }
 
+const getDefaultWastage = (groupName: string, categoryName: string): number => {
+    const isLabelOrLoop = (name: string) => name.toLowerCase().includes("label") || name.toLowerCase().includes("loop");
+    return (isLabelOrLoop(groupName) || isLabelOrLoop(categoryName)) ? 2 : 5;
+};
+
 // ── Store ──────────────────────────────────────────────────────────────
 interface AppState {
     uploadResult: UploadResult | null;
@@ -112,16 +117,18 @@ export const useAppStore = create<AppState>((set) => ({
                     // All categories now use sub-groups
                     for (const [subName, subRows] of Object.entries(data._sub_groups || {})) {
                         const key = `${cat}::${subName}`;
+                        const defaultWastage = getDefaultWastage(po, cat);
                         initValues[po][key] = {};
                         for (let i = 0; i < (subRows as any[]).length; i++) {
-                            initValues[po][key][String(i)] = { consumption: 1, wastage: 5 };
+                            initValues[po][key][String(i)] = { consumption: 1, wastage: defaultWastage };
                         }
                     }
                 } else if (Array.isArray(data)) {
                     // Fallback for flat arrays (legacy safety)
+                    const defaultWastage = getDefaultWastage(po, cat);
                     initValues[po][cat] = {};
                     for (let i = 0; i < data.length; i++) {
-                        initValues[po][cat][String(i)] = { consumption: 1, wastage: 5 };
+                        initValues[po][cat][String(i)] = { consumption: 1, wastage: defaultWastage };
                     }
                 }
             }
@@ -154,7 +161,8 @@ export const useAppStore = create<AppState>((set) => ({
             if (!updated[po]) updated[po] = {};
             if (!updated[po][category]) updated[po][category] = {};
             if (!updated[po][category][String(rowIndex)]) {
-                updated[po][category][String(rowIndex)] = { consumption: 1, wastage: 5 };
+                const baseCategoryName = category.split("::")[0] || category;
+                updated[po][category][String(rowIndex)] = { consumption: 1, wastage: getDefaultWastage(po, baseCategoryName) };
             }
             updated[po][category][String(rowIndex)][field] = value;
             return { consumptionValues: updated };
