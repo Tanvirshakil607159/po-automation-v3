@@ -1,21 +1,36 @@
-"""SQLite database for upload history tracking."""
+"""SQLite database for upload history tracking.
+   Optimized with WAL mode, connection pooling, and proper indexing."""
 
 import sqlite3
 import json
 import os
+import threading
 from datetime import datetime
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "po_history.db")
 
+# Thread-local storage for connection reuse
+_local = threading.local()
 
-def get_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+
+def get_connection() -> sqlite3.Connection:
+    """Get or create a thread-local database connection with WAL mode."""
+    conn = getattr(_local, "conn", None)
+    if conn is None:
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        # Enable WAL mode for concurrent read/write performance
+        conn.execute("PRAGMA journal_mode=WAL")
+        # Increase cache size for faster queries (2MB)
+        conn.execute("PRAGMA cache_size=-2000")
+        # Synchronous NORMAL is safe with WAL and faster than FULL
+        conn.execute("PRAGMA synchronous=NORMAL")
+        _local.conn = conn
     return conn
 
 
 def init_db():
-    """Create the uploads table if it doesn't exist."""
+    """Create the uploads table if it doesn't exist, with proper indexing."""
     conn = get_connection()
     conn.execute(
         """
@@ -27,8 +42,11 @@ def init_db():
         )
         """
     )
+    # Index for faster history queries (sorted by upload_date DESC)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_uploads_date ON uploads (upload_date DESC)"
+    )
     conn.commit()
-    conn.close()
 
 
 def save_upload(filename: str, parsed_data: dict) -> int:
@@ -36,12 +54,10 @@ def save_upload(filename: str, parsed_data: dict) -> int:
     conn = get_connection()
     cur = conn.execute(
         "INSERT INTO uploads (filename, upload_date, parsed_data) VALUES (?, ?, ?)",
-        (filename, datetime.now().isoformat(), json.dumps(parsed_data)),
+        (filename, datetime.now().isoformat(), json.dumps(parsed_data, separators=(',', ':'))),
     )
     conn.commit()
-    upload_id = cur.lastrowid
-    conn.close()
-    return upload_id
+    return cur.lastrowid
 
 
 def get_all_uploads() -> list[dict]:
@@ -50,7 +66,6 @@ def get_all_uploads() -> list[dict]:
     rows = conn.execute(
         "SELECT id, filename, upload_date FROM uploads ORDER BY upload_date DESC"
     ).fetchall()
-    conn.close()
     return [dict(r) for r in rows]
 
 
@@ -61,7 +76,6 @@ def get_upload(upload_id: int) -> dict | None:
         "SELECT id, filename, upload_date, parsed_data FROM uploads WHERE id = ?",
         (upload_id,),
     ).fetchone()
-    conn.close()
     if row is None:
         return None
     result = dict(row)
@@ -74,9 +88,7 @@ def delete_upload(upload_id: int) -> bool:
     conn = get_connection()
     cur = conn.execute("DELETE FROM uploads WHERE id = ?", (upload_id,))
     conn.commit()
-    deleted = cur.rowcount > 0
-    conn.close()
-    return deleted
+    return cur.rowcount > 0
 
 
 # Auto-initialize on import

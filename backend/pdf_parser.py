@@ -151,6 +151,14 @@ def extract_tables_from_pdf(file_bytes: bytes) -> list[dict]:
                     row_dict = {}
                     for i, h in enumerate(headers):
                         val = cleaned_row[i] if i < len(cleaned_row) else ""
+                        
+                        # BLANK OUT Unit Price and Amount columns for user input
+                        h_low = h.lower().strip()
+                        # More robust matching for price/amount headers
+                        is_price = any(kw in h_low for kw in ["unit price", "u.price", "u. price", "price", "rate", "amount", "total amount"])
+                        if is_price:
+                            val = ""
+                            
                         row_dict[h] = val
 
                     # Skip rows where all values are empty

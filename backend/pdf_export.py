@@ -37,6 +37,22 @@ def _get_qty_col_index(headers: list[str]) -> int:
     return -1
 
 
+def _get_price_col_index(headers: list[str]) -> int:
+    for i, h in enumerate(headers):
+        low = h.lower()
+        if any(kw in low for kw in ["unit price", "u.price", "u. price", "price", "rate"]):
+            return i
+    return -1
+
+
+def _get_amount_col_index(headers: list[str]) -> int:
+    for i, h in enumerate(headers):
+        low = h.lower()
+        if any(kw in low for kw in ["amount", "total amount", "total price"]):
+            return i
+    return -1
+
+
 def _build_table_elements(
     rows: list[dict],
     base_headers: list[str],
@@ -64,26 +80,50 @@ def _build_table_elements(
     header_row = [Paragraph(f"<b>{h}</b>", header_cell_style) for h in headers_for_table]
     table_data = [header_row]
 
+    price_col_idx = _get_price_col_index(base_headers)
+    amount_col_idx = _get_amount_col_index(base_headers)
+
     grand_total = 0.0
     grand_qty = 0.0
+    grand_amount = 0.0
 
     for row_idx, row_data in enumerate(rows):
         order_qty = float(row_data.get("_computed_qty", 0))
         grand_qty += order_qty
 
         consumption = float(row_data.get("_computed_cons", 1))
-        wastage = float(row_data.get("_computed_was", 5))
+        # total_req is already calculated in the backend before passing to this function usually, 
+        # or we calculate it here. 
         total_req = float(row_data.get("_computed_total_req", 0))
         grand_total += total_req
 
+        # Manual Price & Amount Logic
+        unit_price = 0.0
+        if price_col_idx >= 0:
+            price_val = str(row_data.get(base_headers[price_col_idx], "0")).replace(",", "")
+            try:
+                unit_price = float(price_val)
+            except ValueError:
+                unit_price = 0.0
+        
+        row_amount = unit_price * total_req
+        grand_amount += row_amount
+
         row_cells = [Paragraph(str(row_idx + 1), cell_style)]
-        for h in base_headers:
-            val = str(row_data.get(h, ""))
-            row_cells.append(Paragraph(val, cell_left_style))
+        for i, h in enumerate(base_headers):
+            if i == amount_col_idx:
+                # Override original amount with calculated one
+                val = f"<b>{row_amount:,.2f}</b>" if row_amount > 0 else ""
+                row_cells.append(Paragraph(val, cell_style))
+            else:
+                val = str(row_data.get(h, ""))
+                row_cells.append(Paragraph(val, cell_left_style))
 
         row_cells.append(Paragraph(f"{consumption:.2f}" if consumption > 0 else "", cell_style))
         if not is_thread:
+            wastage = float(row_data.get("_computed_was", 5))
             row_cells.append(Paragraph(f"{wastage:.1f}%", cell_style))
+        
         row_cells.append(Paragraph(
             f"<b>{total_req:,.2f}</b>" if total_req > 0 else "", cell_style,
         ))
@@ -94,6 +134,10 @@ def _build_table_elements(
     total_row = [""] * total_row_len
     if qty_col_idx >= 0:
         total_row[qty_col_idx + 1] = Paragraph(f"<b>{grand_qty:,.0f}</b>", cell_style)
+    
+    if amount_col_idx >= 0:
+        total_row[amount_col_idx + 1] = Paragraph(f"<b>{grand_amount:,.2f}</b>", cell_style)
+
     total_row[-2] = Paragraph("<b>TOTAL</b>", cell_style)
     total_row[-1] = Paragraph(
         f"<b>{grand_total:,.2f}</b>" if grand_total > 0 else "", cell_style,

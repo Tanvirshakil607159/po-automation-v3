@@ -22,6 +22,7 @@ const TableRow = memo(function TableRow({
     row, rowIdx, headers, catKey, subKey, isThread, isFlat,
     activePO, qtyColIndex, consumptionValues, editingCell,
     setEditingCell, setConsumption, editItemData, dragPayload,
+    unitPriceIdx, amountIdx
 }: {
     row: Record<string, string>;
     rowIdx: number;
@@ -38,6 +39,8 @@ const TableRow = memo(function TableRow({
     setConsumption: (po: string, category: string, rowIndex: number, field: "consumption" | "wastage", value: number) => void;
     editItemData: (po: string, cat: string, subCat: string | null, rowIdx: number, key: string, newValue: string) => void;
     dragPayload: string;
+    unitPriceIdx: number;
+    amountIdx: number;
 }) {
     const qty = useMemo(() => {
         if (qtyColIndex < 0) return 0;
@@ -53,11 +56,21 @@ const TableRow = memo(function TableRow({
     const defaultWastage = isLabelOrLoop ? 2 : 5;
     const wastage = consumptionValues[activePO]?.[consKey]?.[String(rowIdx)]?.wastage ?? defaultWastage;
 
-    let total = isThread ? qty * cons : qty * cons * (1 + wastage / 100);
+    let totalReq = isThread ? qty * cons : qty * cons * (1 + wastage / 100);
     if (isThread) {
-        const fraction = total - Math.floor(total);
-        total = fraction >= 0.5 ? Math.ceil(total) : Math.floor(total);
+        const fraction = totalReq - Math.floor(totalReq);
+        totalReq = fraction >= 0.5 ? Math.ceil(totalReq) : Math.floor(totalReq);
     }
+
+    const unitPrice = useMemo(() => {
+        if (unitPriceIdx < 0) return 0;
+        const val = row[headers[unitPriceIdx]] || "0";
+        return parseFloat(val) || 0;
+    }, [row, unitPriceIdx, headers]);
+
+    const amount = useMemo(() => {
+        return unitPrice * totalReq;
+    }, [unitPrice, totalReq]);
 
     const handleConsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setConsumption(activePO, consKey, rowIdx, "consumption", parseFloat(e.target.value) || 0);
@@ -81,9 +94,35 @@ const TableRow = memo(function TableRow({
                 <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
             </td>
             <td className="px-3 py-2 text-[11px] text-[#a1a1aa] dark:text-[#52525b]">{rowIdx + 1}</td>
-            {headers.map((h: string) => {
+            {headers.map((h: string, idx: number) => {
                 const cellValue = String(row[h] || "");
                 const isEditing = editingCell?.po === activePO && editingCell?.cat === catKey && editingCell?.subCat === (isFlat ? null : subKey) && editingCell?.row === rowIdx && editingCell?.col === h;
+
+                // SPECIAL HANDLING for Unit Price (Editable Input)
+                if (idx === unitPriceIdx) {
+                    return (
+                        <td key={h} className="px-2 py-1.5">
+                            <input
+                                type="number"
+                                step="0.0001"
+                                min="0"
+                                value={row[h] || ""}
+                                onChange={(e) => editItemData(activePO, catKey, isFlat ? null : subKey, rowIdx, h, e.target.value)}
+                                className="w-20 px-2 py-1 rounded border border-[#e5e5e5] dark:border-[#27272a] bg-white dark:bg-[#09090b] text-[12px] text-center focus:border-blue-500 outline-none"
+                                placeholder="0.00"
+                            />
+                        </td>
+                    );
+                }
+
+                // SPECIAL HANDLING for Amount (Calculated Display)
+                if (idx === amountIdx) {
+                    return (
+                        <td key={h} className="px-3 py-2 text-[12px] font-medium text-blue-600 dark:text-blue-400 text-right whitespace-nowrap">
+                            {amount > 0 ? amount.toFixed(2) : "—"}
+                        </td>
+                    );
+                }
 
                 return (
                     <td key={h} className="px-3 py-2 text-[12px] text-[#52525b] dark:text-[#a1a1aa] whitespace-nowrap"
@@ -128,7 +167,7 @@ const TableRow = memo(function TableRow({
                 </td>
             )}
             <td className="px-3 py-2 text-center">
-                <span className="text-[12px] font-semibold text-[#16a34a] dark:text-[#4ade80]">{total > 0 ? total.toFixed(2) : "—"}</span>
+                <span className="text-[12px] font-semibold text-[#16a34a] dark:text-[#4ade80]">{totalReq > 0 ? totalReq.toFixed(2) : "—"}</span>
             </td>
         </tr>
     );
@@ -168,10 +207,34 @@ export default function DataTable() {
 
     if (!categories || !activePO) return null;
 
+    const unitPriceIdx = useMemo(() =>
+        headers.findIndex((h: string) => {
+            const low = h.toLowerCase().trim();
+            return low.includes("unit price") || low.includes("u.price") || low.includes("price") || low.includes("rate");
+        }),
+        [headers]
+    );
+
+    const amountIdx = useMemo(() =>
+        headers.findIndex((h: string) => {
+            const low = h.toLowerCase().trim();
+            return low === "amount" || low.includes("total amount") || low.includes("total price") || low.includes("amt");
+        }),
+        [headers]
+    );
+
+    if (!categories || !activePO) return null;
+
     const getQty = (row: Record<string, string>): number => {
         if (qtyColIndex < 0) return 0;
         const val = row[headers[qtyColIndex]] || "0";
         return parseFloat(val.replace(/,/g, "")) || 0;
+    };
+
+    const getUnitPrice = (row: Record<string, string>): number => {
+        if (unitPriceIdx < 0) return 0;
+        const val = row[headers[unitPriceIdx]] || "0";
+        return parseFloat(val) || 0;
     };
 
     const getCons = (po: string, cat: string, subKey: string, rowIdx: number) =>
@@ -208,7 +271,7 @@ export default function DataTable() {
     };
 
     const renderTable = (rows: Record<string, string>[], catKey: string, subKey: string, isThread: boolean) => {
-        let grandTotal = 0, grandQty = 0;
+        let grandTotal = 0, grandQty = 0, grandAmount = 0;
         const isFlat = subKey === "_flat";
         rows.forEach((row, idx) => {
             const qty = getQty(row);
@@ -219,6 +282,9 @@ export default function DataTable() {
                 rawTotal = fraction >= 0.5 ? Math.ceil(rawTotal) : Math.floor(rawTotal);
             }
             grandTotal += rawTotal;
+
+            const price = getUnitPrice(row);
+            grandAmount += (price * rawTotal);
         });
 
         const ts = getTS(subKey);
@@ -266,6 +332,8 @@ export default function DataTable() {
                                     setConsumption={setConsumption}
                                     editItemData={editItemData}
                                     dragPayload={JSON.stringify({ po: activePO, cat: catKey, subCat: isFlat ? null : subKey, index: rowIdx })}
+                                    unitPriceIdx={unitPriceIdx}
+                                    amountIdx={amountIdx}
                                 />
                             ))}
                         </tbody>
@@ -276,6 +344,7 @@ export default function DataTable() {
                                 {headers.map((h: string, i: number) => (
                                     <td key={h} className="px-3 py-2.5 text-[12px] font-bold">
                                         {i === qtyColIndex ? <span className="text-[#18181b] dark:text-[#fafafa]">{grandQty.toLocaleString()}</span> : ""}
+                                        {i === amountIdx ? <span className="text-blue-600 dark:text-blue-400 font-bold">{grandAmount > 0 ? grandAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}</span> : ""}
                                     </td>
                                 ))}
                                 <td colSpan={isThread ? 1 : 2} className="px-3 py-2.5 text-right text-[10px] font-bold text-[#a1a1aa] dark:text-[#52525b] uppercase tracking-wider">Grand Total</td>
