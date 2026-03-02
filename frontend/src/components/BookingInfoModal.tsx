@@ -1,0 +1,207 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+
+export interface BookingInfo {
+    date: string;
+    supplierName: string;
+    address: string;
+    attention: string;
+    from: string;
+    orderNo: string;
+    refNo: string;
+}
+
+interface Props {
+    open: boolean;
+    onClose: () => void;
+    onExport: (info: BookingInfo) => void;
+    exporting: boolean;
+}
+
+function getTodayDate(): string {
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+}
+
+export default function BookingInfoModal({ open, onClose, onExport, exporting }: Props) {
+    const [info, setInfo] = useState<BookingInfo>({
+        date: getTodayDate(),
+        supplierName: "",
+        address: "",
+        attention: "",
+        from: "",
+        orderNo: "",
+        refNo: "",
+    });
+    const firstInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (open) {
+            setInfo((prev) => ({ ...prev, date: getTodayDate() }));
+            setTimeout(() => firstInputRef.current?.focus(), 100);
+        }
+    }, [open]);
+
+    if (!open) return null;
+
+    const set = (key: keyof BookingInfo, val: string) =>
+        setInfo((prev) => ({ ...prev, [key]: val }));
+
+    const inputClass =
+        "w-full px-3 py-2 rounded-lg text-[13px] bg-[#f5f5f5] dark:bg-[#27272a] border border-[#e5e5e5] dark:border-[#3f3f46] text-[#18181b] dark:text-[#fafafa] placeholder-[#a1a1aa] dark:placeholder-[#71717a] focus:outline-none focus:ring-2 focus:ring-[#18181b] dark:focus:ring-[#fafafa] focus:border-transparent transition-shadow";
+
+    const labelClass = "block text-[12px] font-medium text-[#71717a] dark:text-[#a1a1aa] mb-1";
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
+                onClick={onClose}
+            />
+            {/* Modal */}
+            <div className="relative w-full max-w-lg mx-4 bg-white dark:bg-[#18181b] rounded-2xl shadow-2xl border border-[#e5e5e5] dark:border-[#27272a] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                {/* Header */}
+                <div className="px-6 pt-5 pb-3 border-b border-[#e5e5e5] dark:border-[#27272a]">
+                    <h2 className="text-[16px] font-semibold text-[#18181b] dark:text-[#fafafa]">
+                        Booking Sheet Information
+                    </h2>
+                    <p className="text-[12px] text-[#a1a1aa] dark:text-[#71717a] mt-0.5">
+                        Fill in the details for the PDF booking sheet header.
+                    </p>
+                </div>
+
+                {/* Body */}
+                <div className="px-6 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+                    {/* Date — auto generated, read-only */}
+                    <div>
+                        <label className={labelClass}>Date</label>
+                        <input
+                            type="text"
+                            value={info.date}
+                            readOnly
+                            className={`${inputClass} cursor-default opacity-70`}
+                            id="booking-date"
+                        />
+                    </div>
+
+                    {/* Row: Supplier Name */}
+                    <div>
+                        <label className={labelClass}>Supplier Name</label>
+                        <input
+                            ref={firstInputRef}
+                            type="text"
+                            value={info.supplierName}
+                            onChange={(e) => set("supplierName", e.target.value)}
+                            placeholder="Enter supplier name"
+                            className={inputClass}
+                            id="booking-supplier"
+                        />
+                    </div>
+
+                    {/* Address */}
+                    <div>
+                        <label className={labelClass}>Address</label>
+                        <textarea
+                            value={info.address}
+                            onChange={(e) => set("address", e.target.value)}
+                            placeholder="Enter supplier address"
+                            rows={2}
+                            className={`${inputClass} resize-none`}
+                            id="booking-address"
+                        />
+                    </div>
+
+                    {/* Row: Attention + From */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className={labelClass}>Attention</label>
+                            <input
+                                type="text"
+                                value={info.attention}
+                                onChange={(e) => set("attention", e.target.value)}
+                                placeholder="Attention to"
+                                className={inputClass}
+                                id="booking-attention"
+                            />
+                        </div>
+                        <div>
+                            <label className={labelClass}>From</label>
+                            <input
+                                type="text"
+                                value={info.from}
+                                onChange={(e) => set("from", e.target.value)}
+                                placeholder="From"
+                                className={inputClass}
+                                id="booking-from"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Row: Order No + Ref No */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className={labelClass}>Order No.</label>
+                            <input
+                                type="text"
+                                value={info.orderNo}
+                                onChange={(e) => set("orderNo", e.target.value)}
+                                placeholder="Order number"
+                                className={inputClass}
+                                id="booking-order-no"
+                            />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Ref. No.</label>
+                            <input
+                                type="text"
+                                value={info.refNo}
+                                onChange={(e) => set("refNo", e.target.value)}
+                                placeholder="Reference number"
+                                className={inputClass}
+                                id="booking-ref-no"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="px-6 py-4 border-t border-[#e5e5e5] dark:border-[#27272a] flex items-center justify-end gap-2">
+                    <button
+                        onClick={onClose}
+                        disabled={exporting}
+                        className="px-4 py-2 rounded-lg text-[13px] font-medium bg-[#f5f5f5] dark:bg-[#27272a] text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#e5e5e5] dark:hover:bg-[#3f3f46] transition-colors disabled:opacity-50"
+                        id="booking-cancel-btn"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => onExport(info)}
+                        disabled={exporting}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium bg-[#18181b] dark:bg-[#fafafa] text-white dark:text-[#09090b] hover:bg-[#27272a] dark:hover:bg-[#e5e5e5] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        id="booking-export-btn"
+                    >
+                        {exporting ? (
+                            <>
+                                <div className="w-3.5 h-3.5 rounded-full animate-spin border-[1.5px] border-white/30 dark:border-black/20 border-t-white dark:border-t-black" />
+                                Exporting...
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Export PDF
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}

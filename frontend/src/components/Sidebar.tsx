@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAppStore } from "@/lib/store";
 import { fetchHistory, fetchHistoryItem, deleteHistoryItem } from "@/lib/api";
 
@@ -11,11 +11,11 @@ export default function Sidebar() {
 
     useEffect(() => { loadHistory(); }, []);
 
-    const loadHistory = async () => {
+    const loadHistory = useCallback(async () => {
         try { const items = await fetchHistory(); setHistory(items); } catch { /* */ }
-    };
+    }, [setHistory]);
 
-    const handleLoad = async (id: number) => {
+    const handleLoad = useCallback(async (id: number) => {
         setLoadingId(id);
         try {
             const record = await fetchHistoryItem(id);
@@ -27,14 +27,14 @@ export default function Sidebar() {
             setOpen(false);
         } catch (err) { console.error("Failed to load:", err); }
         finally { setLoadingId(null); }
-    };
+    }, [setUploadResult]);
 
-    const handleDelete = async (id: number, e: React.MouseEvent) => {
+    const handleDelete = useCallback(async (id: number, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!confirm("Delete this entry?")) return;
         try { await deleteHistoryItem(id); await loadHistory(); }
         catch (err) { console.error("Delete failed:", err); }
-    };
+    }, [loadHistory]);
 
     const formatDate = (iso: string) => {
         const d = new Date(iso);

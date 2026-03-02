@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Sidebar from "@/components/Sidebar";
 import UploadZone from "@/components/UploadZone";
 import DataTable from "@/components/DataTable";
@@ -9,8 +10,8 @@ import { useAppStore } from "@/lib/store";
 
 export default function Home() {
   const { groupedData, uploadResult, activePO, setActivePO, clearUpload } = useAppStore();
-  const hasData = groupedData && Object.keys(groupedData.po_groups || {}).length > 0;
-  const poNames = hasData ? Object.keys(groupedData.po_groups || {}) : [];
+  const hasData = useMemo(() => !!(groupedData && Object.keys(groupedData.po_groups || {}).length > 0), [groupedData]);
+  const poNames = useMemo(() => hasData ? Object.keys(groupedData!.po_groups || {}) : [], [hasData, groupedData]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#fafafa] dark:bg-[#09090b]">
@@ -89,7 +90,7 @@ export default function Home() {
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" id="po-tabs">
                   {poNames.map((po, idx) => {
                     const isActive = po === activePO;
-                    const catCount = Object.keys(groupedData.po_groups[po]?.categories || {}).length;
+                    const catCount = Object.keys(groupedData!.po_groups[po]?.categories || {}).length;
                     return (
                       <button
                         key={po}
@@ -118,7 +119,7 @@ export default function Home() {
                   <p className="text-[12px] text-[#a1a1aa] dark:text-[#71717a]">
                     <span className="font-semibold text-[#18181b] dark:text-[#fafafa]">{activePO}</span>
                     <span className="mx-1.5 text-[#d4d4d8] dark:text-[#3f3f46]">·</span>
-                    {Object.keys(groupedData.po_groups[activePO]?.categories || {}).length} categories
+                    {Object.keys(groupedData!.po_groups[activePO]?.categories || {}).length} categories
                   </p>
                 </div>
               )}

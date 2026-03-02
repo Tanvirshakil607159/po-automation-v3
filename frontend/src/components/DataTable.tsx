@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { useAppStore } from "@/lib/store";
 import ExportButton from "./ExportButton";
 
@@ -17,22 +17,156 @@ interface EditingCell { po: string; cat: string; subCat: string | null; row: num
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+// Memoized table row component to prevent unnecessary re-renders
+const TableRow = memo(function TableRow({
+    row, rowIdx, headers, catKey, subKey, isThread, isFlat,
+    activePO, qtyColIndex, consumptionValues, editingCell,
+    setEditingCell, setConsumption, editItemData, dragPayload,
+}: {
+    row: Record<string, string>;
+    rowIdx: number;
+    headers: string[];
+    catKey: string;
+    subKey: string;
+    isThread: boolean;
+    isFlat: boolean;
+    activePO: string;
+    qtyColIndex: number;
+    consumptionValues: any;
+    editingCell: EditingCell | null;
+    setEditingCell: (cell: EditingCell | null) => void;
+    setConsumption: (po: string, category: string, rowIndex: number, field: "consumption" | "wastage", value: number) => void;
+    editItemData: (po: string, cat: string, subCat: string | null, rowIdx: number, key: string, newValue: string) => void;
+    dragPayload: string;
+}) {
+    const qty = useMemo(() => {
+        if (qtyColIndex < 0) return 0;
+        const val = row[headers[qtyColIndex]] || "0";
+        return parseFloat(val.replace(/,/g, "")) || 0;
+    }, [row, qtyColIndex, headers]);
+
+    const consKey = isFlat ? catKey : `${catKey}::${subKey}`;
+
+    const cons = consumptionValues[activePO]?.[consKey]?.[String(rowIdx)]?.consumption ?? 1;
+
+    const isLabelOrLoop = activePO.toLowerCase().includes("label") || catKey.toLowerCase().includes("label") || activePO.toLowerCase().includes("loop") || catKey.toLowerCase().includes("loop");
+    const defaultWastage = isLabelOrLoop ? 2 : 5;
+    const wastage = consumptionValues[activePO]?.[consKey]?.[String(rowIdx)]?.wastage ?? defaultWastage;
+
+    let total = isThread ? qty * cons : qty * cons * (1 + wastage / 100);
+    if (isThread) {
+        const fraction = total - Math.floor(total);
+        total = fraction >= 0.5 ? Math.ceil(total) : Math.floor(total);
+    }
+
+    const handleConsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setConsumption(activePO, consKey, rowIdx, "consumption", parseFloat(e.target.value) || 0);
+    }, [activePO, consKey, rowIdx, setConsumption]);
+
+    const handleWastageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setConsumption(activePO, consKey, rowIdx, "wastage", parseFloat(e.target.value) || 0);
+    }, [activePO, consKey, rowIdx, setConsumption]);
+
+    const handleDragStart = useCallback((e: React.DragEvent) => {
+        e.dataTransfer.setData("application/json", dragPayload);
+        e.dataTransfer.effectAllowed = "move";
+    }, [dragPayload]);
+
+    return (
+        <tr className="border-b border-[#f5f5f5] dark:border-[#1a1a1e] hover:bg-[#fafafa] dark:hover:bg-[#1a1a1e] transition-colors group">
+            <td className="px-3 py-2 text-center text-[#d4d4d8] dark:text-[#3f3f46] hover:text-[#52525b] dark:hover:text-[#a1a1aa] transition-colors cursor-grab active:cursor-grabbing"
+                draggable
+                onDragStart={handleDragStart}
+            >
+                <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
+            </td>
+            <td className="px-3 py-2 text-[11px] text-[#a1a1aa] dark:text-[#52525b]">{rowIdx + 1}</td>
+            {headers.map((h: string) => {
+                const cellValue = String(row[h] || "");
+                const isEditing = editingCell?.po === activePO && editingCell?.cat === catKey && editingCell?.subCat === (isFlat ? null : subKey) && editingCell?.row === rowIdx && editingCell?.col === h;
+
+                return (
+                    <td key={h} className="px-3 py-2 text-[12px] text-[#52525b] dark:text-[#a1a1aa] whitespace-nowrap"
+                        onDoubleClick={() => setEditingCell({ po: activePO, cat: catKey, subCat: isFlat ? null : subKey, row: rowIdx, col: h })}
+                    >
+                        {isEditing ? (
+                            <input
+                                autoFocus
+                                className="w-full bg-white dark:bg-[#09090b] border border-[#2563eb] text-[#18181b] dark:text-[#fafafa] px-1 py-0.5 rounded outline-none"
+                                defaultValue={cellValue}
+                                onBlur={(e) => {
+                                    if (e.target.value !== cellValue) {
+                                        editItemData(activePO, catKey, isFlat ? null : subKey, rowIdx, h, e.target.value);
+                                    }
+                                    setEditingCell(null);
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") e.currentTarget.blur();
+                                    if (e.key === "Escape") setEditingCell(null);
+                                }}
+                            />
+                        ) : (
+                            cellValue || "—"
+                        )}
+                    </td>
+                );
+            })}
+            <td className="px-2 py-1.5">
+                <input type="number" min="0" step="0.01" value={cons}
+                    onChange={handleConsChange}
+                    className="w-16 px-2 py-1.5 rounded-md bg-white dark:bg-[#09090b] border border-[#e5e5e5] dark:border-[#27272a] text-[#18181b] dark:text-[#fafafa] text-center text-[12px]
+                        focus:border-[#2563eb] dark:focus:border-[#60a5fa] focus:ring-2 focus:ring-[#2563eb]/10 dark:focus:ring-[#60a5fa]/10 transition-all"
+                    id={`cons-${catKey}-${subKey}-${rowIdx}`} />
+            </td>
+            {!isThread && (
+                <td className="px-2 py-1.5">
+                    <input type="number" min="0" max="100" step="0.5" value={wastage}
+                        onChange={handleWastageChange}
+                        className="w-16 px-2 py-1.5 rounded-md bg-white dark:bg-[#09090b] border border-[#e5e5e5] dark:border-[#27272a] text-[#18181b] dark:text-[#fafafa] text-center text-[12px]
+                            focus:border-[#2563eb] dark:focus:border-[#60a5fa] focus:ring-2 focus:ring-[#2563eb]/10 dark:focus:ring-[#60a5fa]/10 transition-all"
+                        id={`waste-${catKey}-${subKey}-${rowIdx}`} />
+                </td>
+            )}
+            <td className="px-3 py-2 text-center">
+                <span className="text-[12px] font-semibold text-[#16a34a] dark:text-[#4ade80]">{total > 0 ? total.toFixed(2) : "—"}</span>
+            </td>
+        </tr>
+    );
+});
+
 export default function DataTable() {
-    const { uploadResult, groupedData, activePO, activeTab, consumptionValues, setConsumption, excludedCategories, toggleCategoryExclusion, moveItem, addSubCategory, editItemData } = useAppStore();
+    const groupedData = useAppStore(s => s.groupedData);
+    const activePO = useAppStore(s => s.activePO);
+    const consumptionValues = useAppStore(s => s.consumptionValues);
+    const setConsumption = useAppStore(s => s.setConsumption);
+    const excludedCategories = useAppStore(s => s.excludedCategories);
+    const toggleCategoryExclusion = useAppStore(s => s.toggleCategoryExclusion);
+    const moveItem = useAppStore(s => s.moveItem);
+    const addSubCategory = useAppStore(s => s.addSubCategory);
+    const editItemData = useAppStore(s => s.editItemData);
+
     const [threadSettings, setThreadSettings] = useState<Record<string, ThreadSetting>>({});
     const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
     const [dragOverCat, setDragOverCat] = useState<string | null>(null);
     const [dragOverSubCat, setDragOverSubCat] = useState<string | null>(null);
 
-    if (!groupedData || !activePO || !groupedData.po_groups[activePO]) return null;
+    // Memoize heavy derived data
+    const categories = useMemo(() =>
+        groupedData?.po_groups?.[activePO]?.categories ?? null,
+        [groupedData, activePO]
+    );
 
-    const categories = groupedData.po_groups[activePO].categories;
-    const headers = groupedData.headers;
+    const headers = useMemo(() => groupedData?.headers ?? [], [groupedData]);
 
-    const qtyColIndex = headers.findIndex((h: string) => {
-        const low = h.toLowerCase();
-        return low.includes("qty") || low.includes("quantity");
-    });
+    const qtyColIndex = useMemo(() =>
+        headers.findIndex((h: string) => {
+            const low = h.toLowerCase();
+            return low.includes("qty") || low.includes("quantity");
+        }),
+        [headers]
+    );
+
+    if (!categories || !activePO) return null;
 
     const getQty = (row: Record<string, string>): number => {
         if (qtyColIndex < 0) return 0;
@@ -91,7 +225,6 @@ export default function DataTable() {
         const divisor = THREAD_DIVISORS[ts.count] || 19202.4;
         let rawWeight = isThread && ts.coneLength > 0 && grandTotal > 0 ? grandTotal * (ts.coneLength / divisor) : 0;
         if (isThread && rawWeight > 0) {
-            // Apply wastage to the final calculated weight
             rawWeight = rawWeight * (1 + (ts.wastage || 0) / 100);
         }
         const threadWeight = Math.ceil(rawWeight);
@@ -115,84 +248,26 @@ export default function DataTable() {
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.map((row, rowIdx) => {
-                                const qty = getQty(row);
-                                let total = isFlat ? calcTotalFlat(activePO, catKey, rowIdx, qty, isThread) : calcTotal(activePO, catKey, subKey, rowIdx, qty, isThread);
-                                if (isThread) {
-                                    const fraction = total - Math.floor(total);
-                                    total = fraction >= 0.5 ? Math.ceil(total) : Math.floor(total);
-                                }
-                                const cons = isFlat ? getConsFlat(activePO, catKey, rowIdx) : getCons(activePO, catKey, subKey, rowIdx);
-                                const wastage = isFlat ? getWastageFlat(activePO, catKey, rowIdx) : getWastage(activePO, catKey, subKey, rowIdx);
-                                const consKey = isFlat ? catKey : `${catKey}::${subKey}`;
-
-                                const dragPayload = JSON.stringify({ po: activePO, cat: catKey, subCat: isFlat ? null : subKey, index: rowIdx });
-
-                                return (
-                                    <tr key={rowIdx}
-                                        className="border-b border-[#f5f5f5] dark:border-[#1a1a1e] hover:bg-[#fafafa] dark:hover:bg-[#1a1a1e] transition-colors group">
-                                        <td className="px-3 py-2 text-center text-[#d4d4d8] dark:text-[#3f3f46] hover:text-[#52525b] dark:hover:text-[#a1a1aa] transition-colors cursor-grab active:cursor-grabbing"
-                                            draggable
-                                            onDragStart={(e) => {
-                                                e.dataTransfer.setData("application/json", dragPayload);
-                                                e.dataTransfer.effectAllowed = "move";
-                                            }}
-                                        >
-                                            <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" /></svg>
-                                        </td>
-                                        <td className="px-3 py-2 text-[11px] text-[#a1a1aa] dark:text-[#52525b]">{rowIdx + 1}</td>
-                                        {headers.map((h: string) => {
-                                            const cellValue = String(row[h] || "");
-                                            const isEditing = editingCell?.po === activePO && editingCell?.cat === catKey && editingCell?.subCat === (isFlat ? null : subKey) && editingCell?.row === rowIdx && editingCell?.col === h;
-
-                                            return (
-                                                <td key={h} className="px-3 py-2 text-[12px] text-[#52525b] dark:text-[#a1a1aa] whitespace-nowrap"
-                                                    onDoubleClick={() => setEditingCell({ po: activePO, cat: catKey, subCat: isFlat ? null : subKey, row: rowIdx, col: h })}
-                                                >
-                                                    {isEditing ? (
-                                                        <input
-                                                            autoFocus
-                                                            className="w-full bg-white dark:bg-[#09090b] border border-[#2563eb] text-[#18181b] dark:text-[#fafafa] px-1 py-0.5 rounded outline-none"
-                                                            defaultValue={cellValue}
-                                                            onBlur={(e) => {
-                                                                if (e.target.value !== cellValue) {
-                                                                    editItemData(activePO, catKey, isFlat ? null : subKey, rowIdx, h, e.target.value);
-                                                                }
-                                                                setEditingCell(null);
-                                                            }}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === "Enter") e.currentTarget.blur();
-                                                                if (e.key === "Escape") setEditingCell(null);
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        cellValue || "—"
-                                                    )}
-                                                </td>
-                                            );
-                                        })}
-                                        <td className="px-2 py-1.5">
-                                            <input type="number" min="0" step="0.01" value={cons}
-                                                onChange={(e) => setConsumption(activePO, consKey, rowIdx, "consumption", parseFloat(e.target.value) || 0)}
-                                                className="w-16 px-2 py-1.5 rounded-md bg-white dark:bg-[#09090b] border border-[#e5e5e5] dark:border-[#27272a] text-[#18181b] dark:text-[#fafafa] text-center text-[12px]
-                                                    focus:border-[#2563eb] dark:focus:border-[#60a5fa] focus:ring-2 focus:ring-[#2563eb]/10 dark:focus:ring-[#60a5fa]/10 transition-all"
-                                                id={`cons-${catKey}-${subKey}-${rowIdx}`} />
-                                        </td>
-                                        {!isThread && (
-                                            <td className="px-2 py-1.5">
-                                                <input type="number" min="0" max="100" step="0.5" value={wastage}
-                                                    onChange={(e) => setConsumption(activePO, consKey, rowIdx, "wastage", parseFloat(e.target.value) || 0)}
-                                                    className="w-16 px-2 py-1.5 rounded-md bg-white dark:bg-[#09090b] border border-[#e5e5e5] dark:border-[#27272a] text-[#18181b] dark:text-[#fafafa] text-center text-[12px]
-                                                        focus:border-[#2563eb] dark:focus:border-[#60a5fa] focus:ring-2 focus:ring-[#2563eb]/10 dark:focus:ring-[#60a5fa]/10 transition-all"
-                                                    id={`waste-${catKey}-${subKey}-${rowIdx}`} />
-                                            </td>
-                                        )}
-                                        <td className="px-3 py-2 text-center">
-                                            <span className="text-[12px] font-semibold text-[#16a34a] dark:text-[#4ade80]">{total > 0 ? total.toFixed(2) : "—"}</span>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                            {rows.map((row, rowIdx) => (
+                                <TableRow
+                                    key={rowIdx}
+                                    row={row}
+                                    rowIdx={rowIdx}
+                                    headers={headers}
+                                    catKey={catKey}
+                                    subKey={subKey}
+                                    isThread={isThread}
+                                    isFlat={isFlat}
+                                    activePO={activePO}
+                                    qtyColIndex={qtyColIndex}
+                                    consumptionValues={consumptionValues}
+                                    editingCell={editingCell}
+                                    setEditingCell={setEditingCell}
+                                    setConsumption={setConsumption}
+                                    editItemData={editItemData}
+                                    dragPayload={JSON.stringify({ po: activePO, cat: catKey, subCat: isFlat ? null : subKey, index: rowIdx })}
+                                />
+                            ))}
                         </tbody>
                         <tfoot>
                             <tr className="bg-[#fafafa] dark:bg-[#09090b] border-t border-[#e5e5e5] dark:border-[#27272a]">
@@ -351,7 +426,6 @@ export default function DataTable() {
                                                 setDragOverCat(null);
                                                 try {
                                                     const data = JSON.parse(e.dataTransfer.getData("application/json"));
-                                                    // ONLY allow dropping if it's the SAME main category and diff subcat
                                                     if (data.cat === catName && data.subCat !== subName) {
                                                         moveItem(data.po, data.cat, data.subCat, data.index, catName, subName);
                                                     }

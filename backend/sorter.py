@@ -117,14 +117,17 @@ _COLOR_PATTERN = re.compile(
 )
 
 # ── PO Validation ───────────────────────────────────────────────────────
-JUNK_PO_KEYWORDS = [
+JUNK_PO_KEYWORDS = frozenset([
     "cash", "sample", "test", "n/a", "na", "nil", "none", "unknown",
     "total", "grand total", "sub total", "subtotal", "sum",
     "header", "footer", "note", "remark", "remarks", "comment",
     "page", "date", "signature", "approved", "prepared",
     "uncategorized", "misc", "miscellaneous", "other", "others",
     "blank", "tba", "tbd", "pending", "-", "--", "---", ".",
-]
+])
+
+# Pre-compile prefix patterns for junk PO detection
+_JUNK_PO_PREFIXES = tuple(junk + sep for junk in JUNK_PO_KEYWORDS for sep in (" ", ":"))
 
 VALID_PO_PATTERN = re.compile(r"\d")
 
@@ -132,13 +135,12 @@ VALID_PO_PATTERN = re.compile(r"\d")
 def _is_valid_po(value: str) -> bool:
     """Check if a value looks like a real PO/Order number."""
     v = value.strip().lower()
-    if not v or len(v) < 1:
+    if not v:
         return False
     if v in JUNK_PO_KEYWORDS:
         return False
-    for junk in JUNK_PO_KEYWORDS:
-        if v.startswith(junk + " ") or v.startswith(junk + ":"):
-            return False
+    if v.startswith(_JUNK_PO_PREFIXES):
+        return False
     if not VALID_PO_PATTERN.search(v):
         return False
     return True
@@ -173,62 +175,30 @@ def _find_column_by_keywords(headers: list[str], keywords: list[str], exclude_co
     return None
 
 
-def _is_thread_item(category_name: str) -> bool:
-    """Check if a category name refers to sewing thread."""
-    cat_low = category_name.lower()
-    for kw in THREAD_KEYWORDS:
-        if kw in cat_low:
-            return True
-    return False
+def _check_keywords(text_lower: str, keywords: list[str]) -> bool:
+    """Generic keyword containment check (shared helper)."""
+    return any(kw in text_lower for kw in keywords)
 
+def _is_thread_item(category_name: str) -> bool:
+    return _check_keywords(category_name.lower(), THREAD_KEYWORDS)
 
 def _is_care_label_item(category_name: str) -> bool:
-    """Check if a category name refers to a care label."""
-    cat_low = category_name.lower()
-    for kw in CARE_LABEL_KEYWORDS:
-        if kw in cat_low:
-            return True
-    return False
+    return _check_keywords(category_name.lower(), CARE_LABEL_KEYWORDS)
 
 def _is_hanger_loop_item(category_name: str) -> bool:
-    """Check if a category name refers to a hanger loop."""
-    cat_low = category_name.lower()
-    for kw in HANGER_LOOP_KEYWORDS:
-        if kw in cat_low:
-            return True
-    return False
+    return _check_keywords(category_name.lower(), HANGER_LOOP_KEYWORDS)
 
 def _is_woven_main_label_item(category_name: str) -> bool:
-    """Check if a category name refers to a woven main label."""
-    cat_low = category_name.lower()
-    for kw in WOVEN_MAIN_LABEL_KEYWORDS:
-        if kw in cat_low:
-            return True
-    return False
+    return _check_keywords(category_name.lower(), WOVEN_MAIN_LABEL_KEYWORDS)
 
 def _is_woven_size_label_item(category_name: str) -> bool:
-    """Check if a category name refers to a woven size label."""
-    cat_low = category_name.lower()
-    for kw in WOVEN_SIZE_LABEL_KEYWORDS:
-        if kw in cat_low:
-            return True
-    return False
+    return _check_keywords(category_name.lower(), WOVEN_SIZE_LABEL_KEYWORDS)
 
 def _is_name_label_item(category_name: str) -> bool:
-    """Check if a category name refers to a name label."""
-    cat_low = category_name.lower()
-    for kw in NAME_LABEL_KEYWORDS:
-        if kw in cat_low:
-            return True
-    return False
+    return _check_keywords(category_name.lower(), NAME_LABEL_KEYWORDS)
 
 def _is_tab_label_item(category_name: str) -> bool:
-    """Check if a category name refers to a tab label."""
-    cat_low = category_name.lower()
-    for kw in TAB_LABEL_KEYWORDS:
-        if kw in cat_low:
-            return True
-    return False
+    return _check_keywords(category_name.lower(), TAB_LABEL_KEYWORDS)
 
 def _extract_color_from_text(text: str) -> str | None:
     """Extract a color name from free text using known color list."""
@@ -311,7 +281,7 @@ def _normalize_category(value: str) -> str:
 
 
 # Item values that are actually repeated PDF header rows or irrelevant fields — skip them
-JUNK_ITEM_KEYWORDS = [
+JUNK_ITEM_KEYWORDS = frozenset([
     "order no--style no", "order no - style no", "order no-style no",
     "accessories", "accessory", "item description", "item name",
     "material name", "material", "description", "particular", "particulars",
@@ -331,7 +301,20 @@ JUNK_ITEM_KEYWORDS = [
     "terms and conditions", "terms & conditions", "terms and condition",
     "terms & condition", "terms", "conditions", "condition",
     "terms of delivery", "delivery terms",
-]
+])
+
+# Pre-compute nospace versions for fuzzy junk detection
+JUNK_ITEM_KEYWORDS_NOSPACE = frozenset(j.replace(" ", "") for j in JUNK_ITEM_KEYWORDS)
+
+# Pre-compute junk substring keywords for aggressive scanning
+_JUNK_SUBSTR_KEYWORDS = frozenset([
+    "advisingbank", "applicantbank", "shippedby", "transshipment",
+    "beneficiary", "portofloading", "portofdischarge", "countryof",
+    "latestship", "paymentterm", "incoterm", "termsandcondition",
+])
+
+# Pre-compile regex for cleaning strings (reusable)
+_CLEAN_NONWORD_RE = re.compile(r'[^\w\s]')
 
 
 def _normalize_po(value: str) -> str:
@@ -391,30 +374,24 @@ def group_by_item(rows: list[dict]) -> dict:
             continue
             
         cat_low = cat_val.lower().strip()
-        cat_low_clean = re.sub(r'[^\w\s]', '', cat_low).strip().replace(" ", "")
+        cat_low_clean = _CLEAN_NONWORD_RE.sub('', cat_low).strip().replace(" ", "")
         
         is_junk = False
-        if cat_low in JUNK_ITEM_KEYWORDS or cat_low_clean in [j.replace(" ", "") for j in JUNK_ITEM_KEYWORDS]:
+        if cat_low in JUNK_ITEM_KEYWORDS or cat_low_clean in JUNK_ITEM_KEYWORDS_NOSPACE:
             is_junk = True
         
-        # Aggressive substring block for shipping/banking fields that might have messy OCR/parsing
-        # We check BOTH the category name AND all other cell values in the row
-        junk_kws = [
-            "advisingbank", "applicantbank", "shippedby", "transshipment", 
-            "beneficiary", "portofloading", "portofdischarge", "countryof", 
-            "latestship", "paymentterm", "incoterm", "termsandcondition"
-        ]
-        
-        for junk_kw in junk_kws:
-            if junk_kw in cat_low_clean:
-                is_junk = True
-                break
+        # Aggressive substring block for shipping/banking fields
+        if not is_junk:
+            for junk_kw in _JUNK_SUBSTR_KEYWORDS:
+                if junk_kw in cat_low_clean:
+                    is_junk = True
+                    break
                 
         # If not caught by category name, scan all row values just in case it shifted columns
         if not is_junk:
             for val in row.values():
-                val_clean = re.sub(r'[^\w\s]', '', str(val).lower()).strip().replace(" ", "")
-                for junk_kw in junk_kws:
+                val_clean = _CLEAN_NONWORD_RE.sub('', str(val).lower()).strip().replace(" ", "")
+                for junk_kw in _JUNK_SUBSTR_KEYWORDS:
                     if junk_kw in val_clean:
                         is_junk = True
                         break
@@ -520,13 +497,13 @@ def group_by_item(rows: list[dict]) -> dict:
                 pantone_key = dim_val
             else:
                 # Attempt regex search for dimensions
+                _DIM_PATTERN = re.compile(r'\b(\d+\s*[xX*]\s*\d+)\b')
                 for _, value in row.items():
                     vs = str(value).strip()
-                    if re.search(r'\b(\d+\s*[xX*]\s*\d+)\b', vs):
-                        match = re.search(r'\b(\d+\s*[xX*]\s*\d+)\b', vs)
-                        if match:
-                            dim_val = match.group(1).upper()
-                            break
+                    match = _DIM_PATTERN.search(vs)
+                    if match:
+                        dim_val = match.group(1).upper()
+                        break
                 
                 if dim_val:
                     pantone_key = dim_val

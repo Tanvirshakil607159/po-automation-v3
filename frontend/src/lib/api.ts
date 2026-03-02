@@ -42,6 +42,7 @@ export async function exportPDF(
     consumptionValues: Record<string, unknown> | null,
     filename: string,
     threadSettings?: Record<string, { count: string; cone_length: number }> | null,
+    bookingInfo?: Record<string, string> | null,
 ) {
     const res = await fetch(`${API_BASE}/api/export`, {
         method: "POST",
@@ -50,6 +51,7 @@ export async function exportPDF(
             grouped_data: groupedData,
             consumption_values: consumptionValues,
             thread_settings: threadSettings || null,
+            booking_info: bookingInfo || null,
             filename,
         }),
     });

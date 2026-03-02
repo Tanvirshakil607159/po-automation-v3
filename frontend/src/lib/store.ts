@@ -157,15 +157,23 @@ export const useAppStore = create<AppState>((set) => ({
 
     setConsumption: (po, category, rowIndex, field, value) =>
         set((state) => {
-            const updated = { ...state.consumptionValues };
-            if (!updated[po]) updated[po] = {};
-            if (!updated[po][category]) updated[po][category] = {};
-            if (!updated[po][category][String(rowIndex)]) {
-                const baseCategoryName = category.split("::")[0] || category;
-                updated[po][category][String(rowIndex)] = { consumption: 1, wastage: getDefaultWastage(po, baseCategoryName) };
-            }
-            updated[po][category][String(rowIndex)][field] = value;
-            return { consumptionValues: updated };
+            const prev = state.consumptionValues;
+            const poData = prev[po] ?? {};
+            const catData = poData[category] ?? {};
+            const baseCategoryName = category.split("::")[0] || category;
+            const rowData = catData[String(rowIndex)] ?? { consumption: 1, wastage: getDefaultWastage(po, baseCategoryName) };
+            return {
+                consumptionValues: {
+                    ...prev,
+                    [po]: {
+                        ...poData,
+                        [category]: {
+                            ...catData,
+                            [String(rowIndex)]: { ...rowData, [field]: value },
+                        },
+                    },
+                },
+            };
         }),
 
     setHistory: (items) => set({ history: items }),
@@ -197,7 +205,7 @@ export const useAppStore = create<AppState>((set) => ({
             if (!state.groupedData) return state;
 
             // Deep copy current grouped data
-            const newData = JSON.parse(JSON.stringify(state.groupedData)) as GroupedData;
+            const newData = structuredClone(state.groupedData) as GroupedData;
             const poData = newData.po_groups[po];
             if (!poData || !poData.categories) return state;
 
@@ -249,7 +257,7 @@ export const useAppStore = create<AppState>((set) => ({
     addSubCategory: (po, cat, subCat) =>
         set((state) => {
             if (!state.groupedData) return state;
-            const newData = JSON.parse(JSON.stringify(state.groupedData)) as GroupedData;
+            const newData = structuredClone(state.groupedData) as GroupedData;
             const poData = newData.po_groups[po];
             if (!poData || !poData.categories || !poData.categories[cat]) return state;
 
@@ -265,7 +273,7 @@ export const useAppStore = create<AppState>((set) => ({
     editItemData: (po, cat, subCat, rowIdx, key, newValue) =>
         set((state) => {
             if (!state.groupedData) return state;
-            const newData = JSON.parse(JSON.stringify(state.groupedData)) as GroupedData;
+            const newData = structuredClone(state.groupedData) as GroupedData;
             const poData = newData.po_groups[po];
             if (!poData || !poData.categories || !poData.categories[cat]) return state;
 

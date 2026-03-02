@@ -6,15 +6,14 @@ import re
 from io import BytesIO
 
 # Keywords to identify the ACCESSORIES header row
-HEADER_KEYWORDS = [
+HEADER_KEYWORDS = frozenset([
     "style", "item", "description", "material", "size", "qty",
     "quantity", "order", "color", "colour", "unit", "uom",
     "article", "code", "name", "spec", "specification", "ratio",
     "s/l", "sl", "serial", "no", "po", "buyer", "supplier",
-]
+])
 
 # If ANY cell in a row contains these → STOP scraping entirely
-# (everything after T&C is not accessories data)
 STOP_KEYWORDS = [
     "terms & conditions", "terms and conditions", "terms&conditions",
     "terms & condition", "terms and condition",
@@ -35,12 +34,20 @@ SKIP_KEYWORDS = [
     "tenor of draft",
 ]
 
+# Pre-compute nospace versions for aggressive skip matching
+_SKIP_KEYWORDS_NOSPACE = frozenset(kw.replace(" ", "") for kw in SKIP_KEYWORDS)
+
+# Pre-compile cleanup regex
+_WHITESPACE_RE = re.compile(r"\s+")
+_NOSPACE_RE = re.compile(r"[\s_]+")
+_NONWORD_RE = re.compile(r"[^\w]")
+
 
 def _clean_text(text: str | None) -> str:
     """Normalize whitespace in a cell value."""
     if text is None:
         return ""
-    return re.sub(r"\s+", " ", str(text)).strip()
+    return _WHITESPACE_RE.sub(" ", str(text)).strip()
 
 
 def _is_header_row(row: list[str]) -> bool:
@@ -74,16 +81,12 @@ def _should_skip_cell_text(text: str) -> bool:
     """Check if text contains any irrelevant LC/shipping keyword."""
     if not text:
         return False
-        
-    t = re.sub(r"[\s_]+", " ", text.lower().strip())
-    t_nospace = re.sub(r"[^\w]", "", t)  # Strip all punctuation and spaces
-    
+    t = _NOSPACE_RE.sub(" ", text.lower().strip())
+    t_nospace = _NONWORD_RE.sub("", t)
     for kw in SKIP_KEYWORDS:
         kw_nospace = kw.replace(" ", "")
-        # Aggressive check: look at both the spaced and unspaced versions
         if kw in t or kw_nospace in t_nospace:
             return True
-            
     return False
 
 

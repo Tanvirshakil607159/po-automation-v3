@@ -10,6 +10,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "PO Sorter — Garment Accessories Automation",
   description: "Upload PO PDFs, sort by item, calculate consumption.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

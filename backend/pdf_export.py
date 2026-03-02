@@ -8,7 +8,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer,
-    HRFlowable, KeepTogether
+    HRFlowable, KeepTogether, Image
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
@@ -176,6 +176,7 @@ def create_export_pdf(
     grouped_data: dict,
     consumption_values: dict | None = None,
     thread_settings: dict | None = None,
+    booking_info: dict | None = None,
 ) -> bytes:
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -223,12 +224,76 @@ def create_export_pdf(
         fontSize=6, leading=8, alignment=TA_CENTER, textColor=BLACK,
     )
 
+    # Style for booking header labels and values
+    booking_label_style = ParagraphStyle(
+        "BookingLabel", parent=styles["Normal"],
+        fontSize=10, leading=12, textColor=BLACK, alignment=TA_LEFT,
+    )
+    booking_value_style = ParagraphStyle(
+        "BookingValue", parent=styles["Normal"],
+        fontSize=10, leading=12, textColor=BLACK, alignment=TA_LEFT,
+    )
+
     elements = []
 
-    # ── Title ───────────────────────────────────────────────────────
-    elements.append(Paragraph("K.A. Design Accessories Ltd.", title_style))
-    elements.append(Paragraph("Purchase Order — Sorted Item Report", subtitle_style))
+    # ── Header (Logo) ───────────────────────────────────────────────
+    try:
+        logo_path = "logo.png"
+        img = Image(logo_path)
+        # Scale logo to fit page width (~95% of available width)
+        available_width = A4[0] - 20 * mm
+        target_width = available_width * 0.95
+        
+        orig_w, orig_h = img.drawWidth, img.drawHeight
+        aspect = orig_h / orig_w
+        img.drawWidth = target_width
+        img.drawHeight = target_width * aspect
+        img.hAlign = 'CENTER'
+        elements.append(img)
+        elements.append(Spacer(1, 4))
+    except Exception:
+        # Fallback if logo is missing
+        elements.append(Paragraph("K.A. Design Accessories Ltd.", title_style))
+    
+    elements.append(Paragraph("Booking Order", subtitle_style))
     elements.append(HRFlowable(width="100%", thickness=0.5, color=BLACK, spaceAfter=4))
+
+    # ── Booking Sheet Header ────────────────────────────────────────
+    if booking_info:
+        bi = booking_info
+        available = A4[0] - 20 * mm
+
+        def _lbl(text: str) -> Paragraph:
+            return Paragraph(f"<b>{text}</b>", booking_label_style)
+
+        def _val(text: str) -> Paragraph:
+            return Paragraph(text or "", booking_value_style)
+
+        # 1-column fields
+        header_rows = [
+            [_lbl("Date:"), _val(bi.get("date", ""))],
+            [_lbl("Supplier Name:"), _val(bi.get("supplier_name", ""))],
+            [_lbl("Address:"), _val(bi.get("address", ""))],
+            [_lbl("Attention:"), _val(bi.get("attention", ""))],
+            [_lbl("From:"), _val(bi.get("from_field", ""))],
+            [_lbl("Order No.:"), _val(bi.get("order_no", ""))],
+            [_lbl("Ref. No.:"), _val(bi.get("ref_no", ""))],
+        ]
+        
+        # Table with no borders
+        booking_tbl = Table(header_rows, colWidths=[available * 0.20, available * 0.80])
+        booking_tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), WHITE),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 1),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            # NO GRID/BORDERS as requested
+        ]))
+
+        elements.append(booking_tbl)
+        elements.append(Spacer(1, 6))
 
     base_headers = grouped_data.get("headers", [])
     qty_col_idx = _get_qty_col_index(base_headers)

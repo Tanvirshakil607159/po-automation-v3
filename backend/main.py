@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from io import BytesIO
@@ -11,7 +12,16 @@ from sorter import group_by_item
 from pdf_export import create_export_pdf
 from database import save_upload, get_all_uploads, get_upload, delete_upload
 
-app = FastAPI(title="PO Automation API", version="3.0")
+# Use ORJSONResponse for faster serialization if orjson is available
+try:
+    import orjson  # noqa: F401
+    from fastapi.responses import ORJSONResponse
+    app = FastAPI(title="PO Automation API", version="3.0", default_response_class=ORJSONResponse)
+except ImportError:
+    app = FastAPI(title="PO Automation API", version="3.0")
+
+# GZip compression for responses > 500 bytes (huge speedup for large JSON payloads)
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # CORS — allow all origins for deployment flexibility
 app.add_middleware(
@@ -91,6 +101,7 @@ class ExportRequest(BaseModel):
     grouped_data: dict
     consumption_values: dict | None = None
     thread_settings: dict | None = None
+    booking_info: dict | None = None
     filename: str = "PO_Export"
 
 
@@ -102,6 +113,7 @@ async def export_pdf(req: ExportRequest):
             req.grouped_data,
             req.consumption_values,
             req.thread_settings,
+            req.booking_info,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
