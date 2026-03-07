@@ -70,7 +70,7 @@ export default function ExportButton() {
                         }
 
                         const catData = cats[catName];
-                        const isThread = catName.toLowerCase().includes("thread") || catName.toLowerCase().includes("sewing");
+                        const isThread = po.toLowerCase().includes("thread") || po.toLowerCase().includes("sewing") || catName.toLowerCase().includes("thread") || catName.toLowerCase().includes("sewing");
 
                         let allThreadTotal = 0;
                         let allThreadWeightLbs = 0;

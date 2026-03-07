@@ -400,7 +400,7 @@ export default function DataTable() {
     return (
         <div className="space-y-4" id="data-table-wrapper">
             {Object.entries(categories).map(([catName, catData]: [string, any]) => {
-                const isThread = isThreadCategory(catName);
+                const isThread = isThreadCategory(activePO) || isThreadCategory(catName);
                 const hasSubGroups = catData && typeof catData === "object" && "_sub_groups" in catData;
 
                 return (

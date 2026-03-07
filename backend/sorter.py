@@ -402,35 +402,55 @@ def group_by_item(rows: list[dict]) -> dict:
             skipped += 1
             continue
 
-        # Unify sewing thread variants under one main category name
+        # ── Grouping Strategy ──
+        # We unify variants of common items into canonical category names.
         if _is_thread_item(cat_val):
             cat_val = "Sewing Thread"
-
-        # Unify care label variants under one main category name
-        if _is_care_label_item(cat_val):
+        elif _is_care_label_item(cat_val):
             cat_val = "Care Label"
-
-        # Unify hanger loop variants under one main category name
-        if _is_hanger_loop_item(cat_val):
+        elif _is_hanger_loop_item(cat_val):
             cat_val = "Hanger Loop"
-
-        # Unify woven main label variants under one main category name
-        if _is_woven_main_label_item(cat_val):
+        elif _is_woven_main_label_item(cat_val):
             cat_val = "Woven Main Label"
-
-        # Unify woven size label variants under one main category name
-        if _is_woven_size_label_item(cat_val):
+        elif _is_woven_size_label_item(cat_val):
             cat_val = "Woven Size Label"
-
-        # Unify name label variants under one main category name
-        if _is_name_label_item(cat_val):
+        elif _is_name_label_item(cat_val):
             cat_val = "Name Label"
-
-        # Unify tab label variants under one main category name
-        if _is_tab_label_item(cat_val):
+        elif _is_tab_label_item(cat_val):
             cat_val = "Tab Label"
 
-        if cat_val == "Sewing Thread":
+        # Extract Style/Ref for sub-grouping
+        style_val = ""
+        if style_col:
+            sv = str(row.get(style_col, "")).strip()
+            if sv and sv.lower() not in ("", "n/a", "na", "-", "none"):
+                style_val = sv
+
+        # Determine Main Category (Top Tab) and Sub Category (Item Tab)
+        # As requested: "group every main category" — the Item Category becomes the primary grouping (PO level).
+        # We then use Style + PO for the secondary grouping (Category level).
+        main_category_tab = cat_val
+        
+        # Sub Category: Order No/Style No.
+        if style_val and po_val and po_val != "All Orders":
+            item_sub_tab = f"{style_val}--PO {po_val}"
+        elif style_val:
+            item_sub_tab = style_val
+        elif po_val and po_val != "All Orders":
+            item_sub_tab = f"PO {po_val}"
+        else:
+            item_sub_tab = cat_val
+
+        # Override grouping variables
+        po_val = main_category_tab
+        cat_val = item_sub_tab
+
+        # ── Sub-Sub Category (Internal Grouping) ──
+        # This determines how rows are grouped INSIDE a table (e.g. by Pantone, Size, or Dimension).
+        pantone_key = "Other"
+
+        if main_category_tab == "Sewing Thread":
+            # For Sewing Thread, group by Dimension (Ticket/Count) or Color
             sub_key_val = ""
             if dimension_col:
                 dv = str(row.get(dimension_col, "")).strip()
@@ -441,62 +461,39 @@ def group_by_item(rows: list[dict]) -> dict:
                 if cv and cv.lower() not in ("", "n/a", "na", "-", "none"):
                     sub_key_val = cv
             if not sub_key_val:
-                # Fallback to scanning for anything that looks like a dimension or count
+                # Fallback to scanning for ticket/tex
                 for _, value in row.items():
                     vs = str(value).strip()
                     if re.search(r'\b(tex\s*\d+|t-\d+|ticket\s*\d+|\d+\s*m)\b', vs, re.IGNORECASE):
                         sub_key_val = vs
                         break
-            if not sub_key_val:
-                sub_key_val = "Other"
-            pantone_key = sub_key_val
-        elif cat_val == "Care Label":
-            # For Care Labels, group them strictly by their Style No and Purchase Order number.
-            style_val = ""
-            if style_col:
-                sv = str(row.get(style_col, "")).strip()
+            pantone_key = sub_key_val if sub_key_val else "Other Thread"
+
+        elif main_category_tab == "Woven Size Label":
+            # For Size Labels, prioritize the Size column
+            size_val = ""
+            size_exact_col = next((h for h in headers if "size" in h.lower().strip()), None)
+            if size_exact_col:
+                sv = str(row.get(size_exact_col, "")).strip()
                 if sv and sv.lower() not in ("", "n/a", "na", "-", "none"):
-                    style_val = sv
-            
-            if style_val:
-                pantone_key = f"{style_val}--PO {po_val}" if po_val and po_val != "All Orders" else style_val
-            else:
-                pantone_key = f"PO {po_val}" if po_val and po_val != "All Orders" else "All POs"
-                
-            # Override the main grouping to bundle ALL Care Labels across POs into one major tab
-            po_val = "Care Label"
-        elif cat_val in ("Hanger Loop", "Woven Main Label", "Name Label", "Tab Label"):
-            style_val = ""
-            if style_col:
-                sv = str(row.get(style_col, "")).strip()
+                    size_val = sv
+            if not size_val and dimension_col:
+                sv = str(row.get(dimension_col, "")).strip()
                 if sv and sv.lower() not in ("", "n/a", "na", "-", "none"):
-                    style_val = sv
-            
-            # Sub Category: Order No/Style No.
-            if style_val and po_val and po_val != "All Orders":
-                new_cat_val = f"{style_val}--PO {po_val}"
-            elif style_val:
-                new_cat_val = style_val
-            elif po_val and po_val != "All Orders":
-                new_cat_val = f"PO {po_val}"
-            else:
-                new_cat_val = cat_val
-                
-            # Main Category: Override top-level grouping
-            po_val = cat_val
-            cat_val = new_cat_val
-            
-            # Sub-Sub Category: Dimension
+                    size_val = sv
+            pantone_key = size_val if size_val else "Other Size"
+
+        else:
+            # For all other categories (Trims, Labels, Loops, etc.)
+            # Prioritize Dimension (e.g. 10cm x 5cm) then Pantone
             dim_val = ""
             if dimension_col:
                 dv = str(row.get(dimension_col, "")).strip()
                 if dv and dv.lower() not in ("", "n/a", "na", "-", "none"):
                     dim_val = dv
             
-            if dim_val:
-                pantone_key = dim_val
-            else:
-                # Attempt regex search for dimensions
+            if not dim_val:
+                # Regex search for dimensions like 20x30
                 _DIM_PATTERN = re.compile(r'\b(\d+\s*[xX*]\s*\d+)\b')
                 for _, value in row.items():
                     vs = str(value).strip()
@@ -504,70 +501,26 @@ def group_by_item(rows: list[dict]) -> dict:
                     if match:
                         dim_val = match.group(1).upper()
                         break
-                
-                if dim_val:
-                    pantone_key = dim_val
+            
+            if dim_val:
+                pantone_key = dim_val
+            else:
+                # Fallback to Pantone
+                pantone_val = ""
+                if pantone_col:
+                    pv = str(row.get(pantone_col, "")).strip()
+                    if pv and pv.lower() not in ("", "n/a", "na", "-", "none"):
+                        pantone_val = pv
+                if not pantone_val:
+                    for _, value in row.items():
+                        vs = str(value).strip()
+                        if re.search(r'pantone|panton|pms', vs, re.IGNORECASE):
+                            pantone_val = vs
+                            break
+                if pantone_val:
+                    pantone_key = _dedup_pantone(pantone_val)
                 else:
-                    pantone_key = "Other Dimension"
-        elif cat_val == "Woven Size Label":
-            style_val = ""
-            if style_col:
-                sv = str(row.get(style_col, "")).strip()
-                if sv and sv.lower() not in ("", "n/a", "na", "-", "none"):
-                    style_val = sv
-            
-            # Sub Category: Order No/Style No.
-            if style_val and po_val and po_val != "All Orders":
-                new_cat_val = f"{style_val}--PO {po_val}"
-            elif style_val:
-                new_cat_val = style_val
-            elif po_val and po_val != "All Orders":
-                new_cat_val = f"PO {po_val}"
-            else:
-                new_cat_val = cat_val
-                
-            # Main Category: Override top-level grouping
-            po_val = cat_val
-            cat_val = new_cat_val
-            
-            # Sub-Sub Category: Size
-            size_val = ""
-            
-            # Prioritize a dedicated 'Size' column specifically for Size Labels
-            size_exact_col = next((h for h in headers if "size" in h.lower().strip()), None)
-            if size_exact_col:
-                sv = str(row.get(size_exact_col, "")).strip()
-                if sv and sv.lower() not in ("", "n/a", "na", "-", "none"):
-                    size_val = sv
-                    
-            # Fallback to general dimension column if no Size column was found
-            if not size_val and dimension_col:
-                sv = str(row.get(dimension_col, "")).strip()
-                if sv and sv.lower() not in ("", "n/a", "na", "-", "none"):
-                    size_val = sv
-            
-            if size_val:
-                pantone_key = size_val
-            else:
-                pantone_key = "Other Size"
-        else:
-            # Extract Pantone code for standard items
-            pantone_val = ""
-            if pantone_col:
-                pv = str(row.get(pantone_col, "")).strip()
-                if pv and pv.lower() not in ("", "n/a", "na", "-", "none"):
-                    pantone_val = pv
-            if not pantone_val:
-                # Scan all cell values for pantone-like patterns
-                for _, value in row.items():
-                    vs = str(value).strip()
-                    if re.search(r'pantone|panton|pms', vs, re.IGNORECASE):
-                        pantone_val = vs
-                        break
-            if pantone_val:
-                pantone_key = _dedup_pantone(pantone_val)
-            else:
-                pantone_key = "Other"
+                    pantone_key = "Other"
 
         if po_val not in po_groups:
             po_groups[po_val] = {}
