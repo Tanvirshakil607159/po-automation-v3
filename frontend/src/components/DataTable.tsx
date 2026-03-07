@@ -11,17 +11,16 @@ function isThreadCategory(name: string): boolean {
     return low.includes("thread") || low.includes("sewing");
 }
 
-interface ThreadSetting { count: string; coneLength: number; wastage: number; }
+
 
 interface EditingCell { po: string; cat: string; subCat: string | null; row: number; col: string; }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 // Memoized table row component to prevent unnecessary re-renders
 const TableRow = memo(function TableRow({
     row, rowIdx, headers, catKey, subKey, isThread, isFlat,
-    activePO, qtyColIndex, consumptionValues, editingCell,
-    setEditingCell, setConsumption, editItemData, dragPayload,
+    activePO, qtyColIndex, isEditingRow, editingCol,
+    setEditingCell, editItemData, dragPayload,
     unitPriceIdx, amountIdx
 }: {
     row: Record<string, string>;
@@ -33,10 +32,9 @@ const TableRow = memo(function TableRow({
     isFlat: boolean;
     activePO: string;
     qtyColIndex: number;
-    consumptionValues: any;
-    editingCell: EditingCell | null;
+    isEditingRow: boolean;
+    editingCol: string | null;
     setEditingCell: (cell: EditingCell | null) => void;
-    setConsumption: (po: string, category: string, rowIndex: number, field: "consumption" | "wastage", value: number) => void;
     editItemData: (po: string, cat: string, subCat: string | null, rowIdx: number, key: string, newValue: string) => void;
     dragPayload: string;
     unitPriceIdx: number;
@@ -50,11 +48,12 @@ const TableRow = memo(function TableRow({
 
     const consKey = isFlat ? catKey : `${catKey}::${subKey}`;
 
-    const cons = consumptionValues[activePO]?.[consKey]?.[String(rowIdx)]?.consumption ?? 1;
+    const cons = useAppStore(s => s.consumptionValues[activePO]?.[consKey]?.[String(rowIdx)]?.consumption ?? 1);
 
     const isLabelOrLoop = activePO.toLowerCase().includes("label") || catKey.toLowerCase().includes("label") || activePO.toLowerCase().includes("loop") || catKey.toLowerCase().includes("loop");
     const defaultWastage = isLabelOrLoop ? 2 : 5;
-    const wastage = consumptionValues[activePO]?.[consKey]?.[String(rowIdx)]?.wastage ?? defaultWastage;
+    const wastage = useAppStore(s => s.consumptionValues[activePO]?.[consKey]?.[String(rowIdx)]?.wastage ?? defaultWastage);
+    const setConsumption = useAppStore(s => s.setConsumption);
 
     let totalReq = isThread ? qty * cons : qty * cons * (1 + wastage / 100);
     if (isThread) {
@@ -69,8 +68,8 @@ const TableRow = memo(function TableRow({
     }, [row, unitPriceIdx, headers]);
 
     const amount = useMemo(() => {
-        return unitPrice * totalReq;
-    }, [unitPrice, totalReq]);
+        return unitPrice * qty;
+    }, [unitPrice, qty]);
 
     const handleConsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setConsumption(activePO, consKey, rowIdx, "consumption", parseFloat(e.target.value) || 0);
@@ -96,7 +95,7 @@ const TableRow = memo(function TableRow({
             <td className="px-3 py-2 text-[11px] text-[#a1a1aa] dark:text-[#52525b]">{rowIdx + 1}</td>
             {headers.map((h: string, idx: number) => {
                 const cellValue = String(row[h] || "");
-                const isEditing = editingCell?.po === activePO && editingCell?.cat === catKey && editingCell?.subCat === (isFlat ? null : subKey) && editingCell?.row === rowIdx && editingCell?.col === h;
+                const isEditing = isEditingRow && editingCol === h;
 
                 // SPECIAL HANDLING for Unit Price (Editable Input)
                 if (idx === unitPriceIdx) {
@@ -183,8 +182,8 @@ export default function DataTable() {
     const moveItem = useAppStore(s => s.moveItem);
     const addSubCategory = useAppStore(s => s.addSubCategory);
     const editItemData = useAppStore(s => s.editItemData);
-
-    const [threadSettings, setThreadSettings] = useState<Record<string, ThreadSetting>>({});
+    const threadSettings = useAppStore(s => s.threadSettings);
+    const setThreadSetting = useAppStore(s => s.setThreadSetting);
     const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
     const [dragOverCat, setDragOverCat] = useState<string | null>(null);
     const [dragOverSubCat, setDragOverSubCat] = useState<string | null>(null);
@@ -265,9 +264,9 @@ export default function DataTable() {
         return qty * c * (1 + w / 100);
     };
 
-    const getTS = (k: string): ThreadSetting => threadSettings[k] || { count: "50/2", coneLength: 4000, wastage: 5 };
-    const updateTS = (k: string, f: keyof ThreadSetting, v: string | number) => {
-        setThreadSettings(p => ({ ...p, [k]: { ...getTS(k), [f]: v } }));
+    const getTS = (k: string) => threadSettings[`${activePO}::${k}`] || { count: "50/2", coneLength: 4000, wastage: 5 };
+    const updateTS = (k: string, field: "count" | "coneLength" | "wastage", val: string | number) => {
+        setThreadSetting(activePO, k, field, val);
     };
 
     const renderTable = (rows: Record<string, string>[], catKey: string, subKey: string, isThread: boolean) => {
@@ -284,7 +283,7 @@ export default function DataTable() {
             grandTotal += rawTotal;
 
             const price = getUnitPrice(row);
-            grandAmount += (price * rawTotal);
+            grandAmount += (price * qty);
         });
 
         const ts = getTS(subKey);
@@ -326,10 +325,9 @@ export default function DataTable() {
                                     isFlat={isFlat}
                                     activePO={activePO}
                                     qtyColIndex={qtyColIndex}
-                                    consumptionValues={consumptionValues}
-                                    editingCell={editingCell}
+                                    isEditingRow={editingCell?.po === activePO && editingCell?.cat === catKey && editingCell?.subCat === (isFlat ? null : subKey) && editingCell?.row === rowIdx}
+                                    editingCol={editingCell?.col || null}
                                     setEditingCell={setEditingCell}
-                                    setConsumption={setConsumption}
                                     editItemData={editItemData}
                                     dragPayload={JSON.stringify({ po: activePO, cat: catKey, subCat: isFlat ? null : subKey, index: rowIdx })}
                                     unitPriceIdx={unitPriceIdx}
@@ -397,8 +395,41 @@ export default function DataTable() {
         );
     };
 
+    const poTotalAmount = useMemo(() => {
+        let total = 0;
+        if (!categories || !activePO) return total;
+
+        const isThreadCategoryFunc = (name: string) => name.toLowerCase().includes("thread") || name.toLowerCase().includes("sewing");
+
+        Object.entries(categories).forEach(([catName, catData]: [string, any]) => {
+            if (excludedCategories.includes(`${activePO}::${catName}`)) return;
+
+            const isThread = isThreadCategoryFunc(activePO) || isThreadCategoryFunc(catName);
+            const hasSubGroups = catData && typeof catData === "object" && "_sub_groups" in catData;
+
+            const processRows = (rows: any[], subKey: string) => {
+                rows.forEach((row, idx) => {
+                    const qty = getQty(row);
+                    const unitPrice = getUnitPrice(row);
+
+                    total += (unitPrice * qty);
+                });
+            };
+
+            if (hasSubGroups) {
+                Object.entries(catData._sub_groups).forEach(([subName, subRows]: [string, any]) => {
+                    processRows(subRows, subName);
+                });
+            } else if (Array.isArray(catData)) {
+                processRows(catData, "_flat");
+            }
+        });
+
+        return total;
+    }, [categories, activePO, excludedCategories, headers, unitPriceIdx, qtyColIndex, consumptionValues]);
+
     return (
-        <div className="space-y-4" id="data-table-wrapper">
+        <div className="space-y-4 relative pb-20" id="data-table-wrapper">
             {Object.entries(categories).map(([catName, catData]: [string, any]) => {
                 const isThread = isThreadCategory(activePO) || isThreadCategory(catName);
                 const hasSubGroups = catData && typeof catData === "object" && "_sub_groups" in catData;
@@ -434,7 +465,7 @@ export default function DataTable() {
                             <h3 className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] flex items-center gap-2.5">
                                 <span className={`w-1 h-4 rounded-full ${isThread ? "bg-[#16a34a] dark:bg-[#4ade80]" : "bg-[#2563eb] dark:bg-[#60a5fa]"}`} />
                                 {catName}
-                                {excludedCategories.includes(catName) && (
+                                {excludedCategories.includes(`${activePO}::${catName}`) && (
                                     <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#fee2e2] text-[#ef4444] dark:bg-[#7f1d1d] dark:text-[#f87171] uppercase tracking-wider">
                                         Excluded
                                     </span>
@@ -463,10 +494,10 @@ export default function DataTable() {
                             {!hasSubGroups && Array.isArray(catData) && (
                                 <span className="text-[11px] text-[#a1a1aa] dark:text-[#52525b]">{catData.length} items</span>
                             )}
-                            <button onClick={() => toggleCategoryExclusion(catName)}
-                                title={excludedCategories.includes(catName) ? "Include category" : "Exclude category"}
-                                className={`p-1 rounded transition-colors ${excludedCategories.includes(catName) ? "text-[#10b981] hover:bg-[#d1fae5] dark:hover:bg-[#064e3b]" : "text-[#a1a1aa] hover:bg-[#fee2e2] dark:hover:bg-[#7f1d1d] hover:text-[#ef4444]"}`}>
-                                {excludedCategories.includes(catName) ? (
+                            <button onClick={() => toggleCategoryExclusion(activePO, catName)}
+                                title={excludedCategories.includes(`${activePO}::${catName}`) ? "Include category" : "Exclude category"}
+                                className={`p-1 rounded transition-colors ${excludedCategories.includes(`${activePO}::${catName}`) ? "text-[#10b981] hover:bg-[#d1fae5] dark:hover:bg-[#064e3b]" : "text-[#a1a1aa] hover:bg-[#fee2e2] dark:hover:bg-[#7f1d1d] hover:text-[#ef4444]"}`}>
+                                {excludedCategories.includes(`${activePO}::${catName}`) ? (
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                                 ) : (
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -474,7 +505,7 @@ export default function DataTable() {
                             </button>
                         </div>
 
-                        {!excludedCategories.includes(catName) && (
+                        {!excludedCategories.includes(`${activePO}::${catName}`) && (
                             hasSubGroups ? (
                                 <div>
                                     {Object.entries(catData._sub_groups).map(([subName, subRows]: [string, any]) => (
@@ -573,6 +604,25 @@ export default function DataTable() {
                     </div>
                 );
             })}
+
+            {/* Grand Total Amount Floating Bar */}
+            {poTotalAmount > 0 && (
+                <div className="fixed sm:absolute bottom-0 left-0 right-0 sm:left-auto sm:right-auto sm:bottom-0 sm:w-full mt-8 p-4 bg-white dark:bg-[#18181b] border-t border-[#e5e5e5] dark:border-[#27272a] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] sm:shadow-none sm:rounded-b-xl z-20 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                            <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-semibold text-[#a1a1aa] dark:text-[#71717a] uppercase tracking-wider">Total Amount ({activePO})</p>
+                            <p className="text-[18px] sm:text-xl font-bold text-[#18181b] dark:text-[#fafafa]">
+                                ৳ {poTotalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

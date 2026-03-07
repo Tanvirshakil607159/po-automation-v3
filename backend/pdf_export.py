@@ -11,7 +11,7 @@ from reportlab.platypus import (
     HRFlowable, KeepTogether, Image
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 # Thread weight divisors
 THREAD_DIVISORS = {
@@ -25,7 +25,9 @@ GRAY_LINE = colors.HexColor("#999999")
 
 
 def _is_thread_category(name: str) -> bool:
-    low = name.lower()
+    if not name:
+        return False
+    low = str(name).lower()
     return "thread" in low or "sewing" in low
 
 
@@ -106,7 +108,7 @@ def _build_table_elements(
             except ValueError:
                 unit_price = 0.0
         
-        row_amount = unit_price * total_req
+        row_amount = unit_price * order_qty
         grand_amount += row_amount
 
         row_cells = [Paragraph(str(row_idx + 1), cell_style)]
@@ -356,18 +358,23 @@ def create_export_pdf(
     thread_settings_map = thread_settings or {}
 
     for po_name, po_data in po_groups.items():
+        categories = po_data.get("categories", {})
+        if not categories:
+            continue
+
         elements.append(Paragraph(f"<b>PO: {po_name}</b>", po_style))
         elements.append(HRFlowable(width="100%", thickness=0.5, color=BLACK, spaceAfter=4))
 
-        categories = po_data.get("categories", {})
-
         for cat_name, cat_data in categories.items():
-            is_thread = _is_thread_category(cat_name)
+            is_thread = _is_thread_category(cat_name) or _is_thread_category(po_name)
             has_sub_groups = isinstance(cat_data, dict) and "_sub_groups" in cat_data
 
             if has_sub_groups:
                 # ── Thread category with Pantone sub-groups ────────────
-                sub_groups = cat_data["_sub_groups"]
+                sub_groups = cat_data.get("_sub_groups", {})
+                if not sub_groups:
+                    continue
+
                 elements.append(Paragraph(
                     f"<b>{cat_name}</b> ({len(sub_groups)} sub-groups)", section_style,
                 ))
@@ -379,7 +386,7 @@ def create_export_pdf(
                         sub_section_style,
                     )
                     # Get per-sub-group thread settings
-                    sub_ts = thread_settings_map.get(sub_name, {})
+                    sub_ts = thread_settings_map.get(f"{po_name}::{sub_name}", {})
                     sub_count = sub_ts.get("count", "50/2") if sub_ts else "50/2"
                     sub_cone = float(sub_ts.get("cone_length", 4000)) if sub_ts else 4000.0
                     sub_wastage = float(sub_ts.get("wastage", 5.0)) if sub_ts else 5.0
@@ -414,23 +421,25 @@ def create_export_pdf(
 
                         summary_style = ParagraphStyle(
                             "ThreadSummary", parent=cell_left_style,
-                            fontSize=7, leading=10,
+                            fontSize=11, leading=16,
                         )
                         summary_data = [[Paragraph("".join(summary_parts), summary_style)]]
                         summary_tbl = Table(summary_data, colWidths=[available])
                         summary_tbl.setStyle(TableStyle([
                             ("BACKGROUND", (0, 0), (-1, -1), WHITE),
-                            ("BOX", (0, 0), (-1, -1), 1, BLACK),
-                            ("TOPPADDING", (0, 0), (-1, -1), 4),
-                            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                            ("BOX", (0, 0), (-1, -1), 1.5, BLACK),
+                            ("TOPPADDING", (0, 0), (-1, -1), 8),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                            ("LEFTPADDING", (0, 0), (-1, -1), 8),
                         ]))
                         elements.append(summary_tbl)
-                        elements.append(Spacer(1, 6))
+                        elements.append(Spacer(1, 8))
 
             elif isinstance(cat_data, list):
                 # ── Normal flat category ───────────────────────────────
                 rows = cat_data
+                if not rows:
+                    continue
                 row_count = len(rows)
                 cat_header = Paragraph(
                     f"<b>{cat_name}</b> ({row_count} items)", section_style,
@@ -444,6 +453,30 @@ def create_export_pdf(
                 )
                 section_elements.append(Spacer(1, 6))
                 elements.append(KeepTogether(section_elements))
+
+        # ── PO Grand Total Amount ────────────────────────────────────
+        po_total_amount = float(po_data.get("_computed_po_total_amount", 0.0))
+        if po_total_amount > 0:
+            total_amount_style = ParagraphStyle(
+                "POTotalAmount", parent=cell_left_style,
+                fontSize=9, leading=12, alignment=TA_RIGHT,
+            )
+            total_amount_data = [[
+                Paragraph("<b>Grand Total Amount:</b>", total_amount_style),
+                Paragraph(f"<b>৳ {po_total_amount:,.2f}</b>", total_amount_style)
+            ]]
+            total_amount_tbl = Table(total_amount_data, colWidths=[available * 0.7, available * 0.3])
+            total_amount_tbl.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f0fdf4")),
+                ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#16a34a")),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (1, 0), (1, 0), 12),
+                ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#16a34a"))
+            ]))
+            elements.append(Spacer(1, 6))
+            elements.append(total_amount_tbl)
+            elements.append(Spacer(1, 10))
 
     # ── Footer ─────────────────────────────────────────────────────
     elements.append(HRFlowable(width="100%", thickness=0.25, color=GRAY_LINE, spaceBefore=8))

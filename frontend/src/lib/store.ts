@@ -74,6 +74,7 @@ interface AppState {
     activeTab: string;
     isUploading: boolean;
     consumptionValues: ConsumptionValues;
+    threadSettings: Record<string, { count: string; coneLength: number; wastage: number }>;
     history: HistoryItem[];
 
     setUploadResult: (result: UploadResult) => void;
@@ -81,10 +82,11 @@ interface AppState {
     setActiveTab: (tab: string) => void;
     setIsUploading: (val: boolean) => void;
     setConsumption: (po: string, category: string, rowIndex: number, field: "consumption" | "wastage", value: number) => void;
+    setThreadSetting: (po: string, subKey: string, field: "count" | "coneLength" | "wastage", value: string | number) => void;
     setHistory: (items: HistoryItem[]) => void;
     clearUpload: () => void;
     excludedCategories: string[];
-    toggleCategoryExclusion: (category: string) => void;
+    toggleCategoryExclusion: (po: string, category: string) => void;
     moveItem: (po: string, srcCat: string, srcSubCat: string | null, srcIdx: number, destCat: string, destSubCat: string | null) => void;
     addSubCategory: (po: string, cat: string, subCat: string) => void;
     editItemData: (po: string, cat: string, subCat: string | null, rowIdx: number, key: string, newValue: string) => void;
@@ -97,8 +99,22 @@ export const useAppStore = create<AppState>((set) => ({
     activeTab: "",
     isUploading: false,
     consumptionValues: {},
+    threadSettings: {},
     history: [],
     excludedCategories: [],
+
+    setThreadSetting: (po, subKey, field, value) => {
+        set((state) => {
+            const key = `${po}::${subKey}`;
+            const current = state.threadSettings[key] || { count: "50/2", coneLength: 4000, wastage: 5 };
+            return {
+                threadSettings: {
+                    ...state.threadSettings,
+                    [key]: { ...current, [field]: value }
+                }
+            };
+        });
+    },
 
     setUploadResult: (result) => {
         // Migrate data to ensure it's in the new po_groups format
@@ -140,6 +156,7 @@ export const useAppStore = create<AppState>((set) => ({
             activePO: firstPO,
             activeTab: firstCat,
             consumptionValues: initValues,
+            threadSettings: {},
             excludedCategories: [],
         });
     },
@@ -188,14 +205,15 @@ export const useAppStore = create<AppState>((set) => ({
             excludedCategories: [],
         }),
 
-    toggleCategoryExclusion: (category) =>
+    toggleCategoryExclusion: (po, category) =>
         set((state) => {
             const excluded = [...state.excludedCategories];
-            const idx = excluded.indexOf(category);
+            const key = `${po}::${category}`;
+            const idx = excluded.indexOf(key);
             if (idx >= 0) {
                 excluded.splice(idx, 1);
             } else {
-                excluded.push(category);
+                excluded.push(key);
             }
             return { excludedCategories: excluded };
         }),

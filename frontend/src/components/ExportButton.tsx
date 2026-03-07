@@ -6,7 +6,7 @@ import { exportPDF } from "@/lib/api";
 import BookingInfoModal, { BookingInfo } from "./BookingInfoModal";
 
 export default function ExportButton() {
-    const { groupedData, consumptionValues, uploadResult, excludedCategories } = useAppStore();
+    const { groupedData, consumptionValues, threadSettings, uploadResult, excludedCategories } = useAppStore();
     const [exporting, setExporting] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
 
@@ -14,21 +14,9 @@ export default function ExportButton() {
 
     const handleExport = async (bookingInfo: BookingInfo) => {
         setExporting(true);
+        setExporting(true);
         try {
             const filename = uploadResult?.filename?.replace(".pdf", "") || "PO_Export";
-            const threadSettingsMap: Record<string, { count: string; cone_length: number; wastage: number }> = {};
-            const countSelects = document.querySelectorAll<HTMLSelectElement>('[id^="thread-count-"]');
-            countSelects.forEach((sel) => {
-                const subKey = sel.id.replace("thread-count-", "");
-                const coneInput = document.getElementById(`cone-length-${subKey}`) as HTMLSelectElement | null;
-                const coneVal = coneInput ? parseInt(coneInput.value) || 4000 : 4000;
-                const wastageInput = document.getElementById(`wastage-${subKey}`) as HTMLInputElement | null;
-                const wastageVal = wastageInput ? parseFloat(wastageInput.value) || 0 : 5;
-                if (coneVal > 0) {
-                    threadSettingsMap[subKey] = { count: sel.value, cone_length: coneVal, wastage: wastageVal };
-                }
-            });
-
             const cleanData = JSON.parse(JSON.stringify(groupedData));
 
             const excludedCols = ["item category", "item description", "material name", "material", "description", "item", "accessories", "accessory", "trims", "trim"];
@@ -60,11 +48,18 @@ export default function ExportButton() {
                 return consumptionValues[po]?.[ck]?.[String(rowIdx)]?.wastage ?? defaultWastage;
             };
 
+            const _getPriceColIndexFunc = (hdrs: string[]) => {
+                return hdrs.findIndex(h => {
+                    const low = h.toLowerCase().trim();
+                    return low.includes("unit price") || low.includes("u.price") || low.includes("price") || low.includes("rate");
+                });
+            };
+
             if (cleanData.po_groups) {
                 for (const po in cleanData.po_groups) {
                     const cats = cleanData.po_groups[po].categories;
                     for (const catName in cats) {
-                        if (excludedCategories.includes(catName)) {
+                        if (excludedCategories.includes(`${po}::${catName}`)) {
                             delete cats[catName];
                             continue;
                         }
@@ -104,11 +99,11 @@ export default function ExportButton() {
 
                             if (isThread) {
                                 allThreadTotal += subTotal;
-                                const ts = threadSettingsMap[subName] || { count: "50/2", cone_length: 4000, wastage: 5 };
-                                const divisor = THREAD_DIVISORS[ts.count] || 19202.4;
-                                let rawWeight = ts.cone_length > 0 && subTotal > 0 ? subTotal * (ts.cone_length / divisor) : 0;
+                                const tsInfo = threadSettings[`${po}::${subName}`] || { count: "50/2", coneLength: 4000, wastage: 5 };
+                                const divisor = THREAD_DIVISORS[tsInfo.count] || 19202.4;
+                                let rawWeight = tsInfo.coneLength > 0 && subTotal > 0 ? subTotal * (tsInfo.coneLength / divisor) : 0;
                                 if (rawWeight > 0) {
-                                    rawWeight = rawWeight * (1 + ts.wastage / 100);
+                                    rawWeight = rawWeight * (1 + tsInfo.wastage / 100);
                                 }
                                 const tw = Math.ceil(rawWeight);
                                 allThreadWeightLbs += tw;
@@ -147,6 +142,42 @@ export default function ExportButton() {
                             }
                         }
                     }
+
+                    // Calculate PO Grand Total Amount
+                    let poTotalAmount = 0;
+                    const priceColIdx = _getPriceColIndexFunc(filteredHeaders);
+
+                    for (const catName in cats) {
+                        const catData = cats[catName];
+                        const isThread = po.toLowerCase().includes("thread") || po.toLowerCase().includes("sewing") || catName.toLowerCase().includes("thread") || catName.toLowerCase().includes("sewing");
+
+                        const processRowsForAmount = (rows: any[], subKey: string) => {
+                            rows.forEach((row, idx) => {
+                                const qty = getQty(row);
+
+                                let unitPrice = 0;
+                                if (priceColIdx >= 0) {
+                                    const v = String(row[filteredHeaders[priceColIdx]] || "0").replace(/,/g, "");
+                                    unitPrice = parseFloat(v) || 0;
+                                }
+
+                                poTotalAmount += (unitPrice * qty);
+                            });
+                        };
+
+                        if (catData && typeof catData === "object" && "_sub_groups" in catData) {
+                            for (const subName in catData._sub_groups) {
+                                processRowsForAmount(catData._sub_groups[subName], subName);
+                            }
+                        } else if (Array.isArray(catData)) {
+                            processRowsForAmount(catData, "_flat");
+                        }
+                    }
+                    cleanData.po_groups[po]._computed_po_total_amount = poTotalAmount;
+
+                    if (Object.keys(cats).length === 0) {
+                        delete cleanData.po_groups[po];
+                    }
                 }
             }
 
@@ -160,9 +191,17 @@ export default function ExportButton() {
                 order_no: bookingInfo.orderNo,
                 ref_no: bookingInfo.refNo,
             };
+            const mappedThreadSettings: Record<string, any> = {};
+            for (const [k, v] of Object.entries(threadSettings || {})) {
+                mappedThreadSettings[k] = {
+                    count: v.count,
+                    cone_length: v.coneLength,
+                    wastage: v.wastage
+                };
+            }
 
             await exportPDF(cleanData, consumptionValues, filename,
-                Object.keys(threadSettingsMap).length > 0 ? threadSettingsMap : null,
+                Object.keys(mappedThreadSettings).length > 0 ? mappedThreadSettings : null,
                 bookingInfoPayload);
 
             setModalOpen(false);
