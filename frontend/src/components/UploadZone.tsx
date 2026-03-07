@@ -3,26 +3,125 @@
 import { useCallback, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { uploadPDF, fetchHistory } from "@/lib/api";
+import { GroupedData } from "@/lib/store";
+
+/* ── helpers ─────────────────────────────────────────────────────────── */
+
+/** Deep-merge multiple GroupedData results into one unified structure. */
+function mergeGroupedData(results: GroupedData[]): GroupedData {
+    if (results.length === 0) throw new Error("No results to merge");
+    if (results.length === 1) return results[0];
+
+    const merged: GroupedData = {
+        po_column: results[0].po_column,
+        grouping_column: results[0].grouping_column,
+        po_groups: {},
+        headers: results[0].headers,
+        all_categories: [],
+    };
+
+    const allCatsSet = new Set<string>();
+
+    for (const result of results) {
+        for (const cat of result.all_categories) allCatsSet.add(cat);
+
+        for (const [poKey, poData] of Object.entries(result.po_groups)) {
+            if (!merged.po_groups[poKey]) {
+                merged.po_groups[poKey] = { categories: {} };
+            }
+            const destCats = merged.po_groups[poKey].categories as Record<string, unknown>;
+            const srcCats = (poData as { categories: Record<string, unknown> }).categories;
+
+            for (const [catKey, catData] of Object.entries(srcCats)) {
+                if (!destCats[catKey]) {
+                    destCats[catKey] = catData;
+                } else {
+                    // Merge sub_groups or flat arrays
+                    const dest = destCats[catKey] as Record<string, unknown>;
+                    const src = catData as Record<string, unknown>;
+                    if (dest._sub_groups && src._sub_groups) {
+                        const destSub = dest._sub_groups as Record<string, unknown[]>;
+                        const srcSub = src._sub_groups as Record<string, unknown[]>;
+                        for (const [sgKey, sgRows] of Object.entries(srcSub)) {
+                            if (!destSub[sgKey]) {
+                                destSub[sgKey] = sgRows;
+                            } else {
+                                destSub[sgKey] = [...(destSub[sgKey] as unknown[]), ...sgRows];
+                            }
+                        }
+                    } else if (Array.isArray(dest) && Array.isArray(src)) {
+                        (destCats[catKey] as unknown[]).push(...(src as unknown[]));
+                    }
+                }
+            }
+        }
+    }
+
+    merged.all_categories = Array.from(allCatsSet).sort();
+    return merged;
+}
+
+/* ── component ───────────────────────────────────────────────────────── */
 
 export default function UploadZone() {
     const { setUploadResult, setIsUploading, isUploading, setHistory } = useAppStore();
     const [dragOver, setDragOver] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
-    const handleFile = useCallback(async (file: File) => {
-        if (!file.name.toLowerCase().endsWith(".pdf")) { setError("Please upload a PDF file."); return; }
-        setError(null); setIsUploading(true);
+    const handleFiles = useCallback(async (files: FileList | File[]) => {
+        const arr = Array.from(files).filter(f => f.name.toLowerCase().endsWith(".pdf"));
+        if (arr.length === 0) { setError("Please upload PDF files."); return; }
+
+        const nonPdf = Array.from(files).length - arr.length;
+        if (nonPdf > 0) setError(`${nonPdf} non-PDF file(s) were skipped.`);
+        else setError(null);
+
+        setIsUploading(true);
+        setProgress({ done: 0, total: arr.length });
+
         try {
-            const result = await uploadPDF(file); setUploadResult(result);
-            const history = await fetchHistory(); setHistory(history);
-        } catch (err: unknown) { setError(err instanceof Error ? err.message : "Upload failed"); }
-        finally { setIsUploading(false); }
+            const groupedResults: GroupedData[] = [];
+            let lastId = 0;
+            let totalRows = 0;
+            let lastFilename = "";
+            const filenames: string[] = [];
+
+            for (let i = 0; i < arr.length; i++) {
+                setProgress({ done: i, total: arr.length });
+                const result = await uploadPDF(arr[i]);
+                groupedResults.push(result.data as unknown as GroupedData);
+                lastId = result.id;
+                totalRows += result.total_rows;
+                filenames.push(arr[i].name);
+                lastFilename = filenames.join(" + ");
+            }
+
+            setProgress({ done: arr.length, total: arr.length });
+
+            const merged = mergeGroupedData(groupedResults);
+            setUploadResult({
+                id: lastId,
+                filename: lastFilename,
+                total_rows: totalRows,
+                categories_count: merged.all_categories.length,
+                data: merged as unknown as import("@/lib/store").GroupedData,
+            });
+
+            const history = await fetchHistory();
+            setHistory(history);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Upload failed");
+        } finally {
+            setIsUploading(false);
+            setProgress(null);
+        }
     }, [setUploadResult, setIsUploading, setHistory]);
 
     const onDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault(); setDragOver(false);
-        const file = e.dataTransfer.files[0]; if (file) handleFile(file);
-    }, [handleFile]);
+        if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+    }, [handleFiles]);
 
     return (
         <div
@@ -36,16 +135,43 @@ export default function UploadZone() {
             onClick={() => document.getElementById("pdf-input")?.click()}
             id="upload-zone"
         >
-            <input id="pdf-input" type="file" accept=".pdf" className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+            {/* Hidden multi-file input */}
+            <input
+                id="pdf-input"
+                type="file"
+                accept=".pdf"
+                multiple
+                className="hidden"
+                onChange={(e) => { if (e.target.files?.length) handleFiles(e.target.files); e.target.value = ""; }}
+            />
 
             {isUploading ? (
                 <div className="py-2">
                     <div className="inline-flex items-center justify-center w-10 h-10 mb-4">
                         <div className="w-8 h-8 rounded-full animate-spin border-2 border-[#e5e5e5] dark:border-[#3f3f46] border-t-[#18181b] dark:border-t-[#fafafa]" />
                     </div>
-                    <p className="text-[14px] font-medium text-[#18181b] dark:text-[#fafafa]">Processing your PDF...</p>
-                    <p className="text-[12px] text-[#a1a1aa] dark:text-[#71717a] mt-1">Extracting tables & sorting items</p>
+                    {progress ? (
+                        <>
+                            <p className="text-[14px] font-medium text-[#18181b] dark:text-[#fafafa]">
+                                Uploading file {progress.done + 1} of {progress.total}…
+                            </p>
+                            {/* Progress bar */}
+                            <div className="mt-3 mx-auto w-48 h-1.5 rounded-full bg-[#e5e5e5] dark:bg-[#27272a] overflow-hidden">
+                                <div
+                                    className="h-full bg-[#18181b] dark:bg-[#fafafa] rounded-full transition-all duration-300"
+                                    style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }}
+                                />
+                            </div>
+                            <p className="text-[11px] text-[#a1a1aa] dark:text-[#71717a] mt-1.5">
+                                {Math.round((progress.done / progress.total) * 100)}% complete
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-[14px] font-medium text-[#18181b] dark:text-[#fafafa]">Processing your PDF…</p>
+                            <p className="text-[12px] text-[#a1a1aa] dark:text-[#71717a] mt-1">Extracting tables &amp; sorting items</p>
+                        </>
+                    )}
                 </div>
             ) : (
                 <div className="py-2">
@@ -53,9 +179,9 @@ export default function UploadZone() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                             d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
-                    <p className="text-[14px] font-medium text-[#18181b] dark:text-[#fafafa]">Drop your PO file here</p>
+                    <p className="text-[14px] font-medium text-[#18181b] dark:text-[#fafafa]">Drop your PO files here</p>
                     <p className="text-[12px] text-[#a1a1aa] dark:text-[#71717a] mt-1.5">
-                        or <span className="text-[#2563eb] dark:text-[#60a5fa]">browse files</span> · PDF only
+                        or <span className="text-[#2563eb] dark:text-[#60a5fa]">browse files</span> · PDF only · Multiple files supported
                     </p>
                 </div>
             )}

@@ -6,7 +6,7 @@ import { exportPDF } from "@/lib/api";
 import BookingInfoModal, { BookingInfo } from "./BookingInfoModal";
 
 export default function ExportButton() {
-    const { groupedData, consumptionValues, threadSettings, uploadResult, excludedCategories } = useAppStore();
+    const { groupedData, consumptionValues, threadSettings, uploadResult, excludedCategories, activePO } = useAppStore();
     const [exporting, setExporting] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
 
@@ -14,10 +14,17 @@ export default function ExportButton() {
 
     const handleExport = async (bookingInfo: BookingInfo) => {
         setExporting(true);
-        setExporting(true);
         try {
             const filename = uploadResult?.filename?.replace(".pdf", "") || "PO_Export";
             const cleanData = JSON.parse(JSON.stringify(groupedData));
+
+            // ── Only export the currently selected group ──────────────
+            if (activePO && cleanData.po_groups) {
+                const selectedGroup = cleanData.po_groups[activePO];
+                if (selectedGroup) {
+                    cleanData.po_groups = { [activePO]: selectedGroup };
+                }
+            }
 
             const excludedCols = ["item category", "item description", "material name", "material", "description", "item", "accessories", "accessory", "trims", "trim"];
             const filteredHeaders = (groupedData.headers || []).filter((h: string) => {
