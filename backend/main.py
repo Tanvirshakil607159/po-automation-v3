@@ -102,6 +102,8 @@ class ExportRequest(BaseModel):
     consumption_values: dict | None = None
     thread_settings: dict | None = None
     booking_info: dict | None = None
+    export_type: str = "work_order"
+    invoice_info: dict | None = None
     filename: str = "PO_Export"
 
 
@@ -114,6 +116,8 @@ async def export_pdf(req: ExportRequest):
             req.consumption_values,
             req.thread_settings,
             req.booking_info,
+            req.export_type,
+            req.invoice_info,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")

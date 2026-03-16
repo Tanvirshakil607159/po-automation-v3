@@ -43,6 +43,8 @@ export async function exportPDF(
     filename: string,
     threadSettings?: Record<string, { count: string; cone_length: number }> | null,
     bookingInfo?: Record<string, string> | null,
+    exportType: "work_order" | "invoice" = "work_order",
+    invoiceInfo?: Record<string, string> | null,
 ) {
     const res = await fetch(`${API_BASE}/api/export`, {
         method: "POST",
@@ -53,6 +55,8 @@ export async function exportPDF(
             thread_settings: threadSettings || null,
             booking_info: bookingInfo || null,
             filename,
+            export_type: exportType,
+            invoice_info: invoiceInfo || null,
         }),
     });
 

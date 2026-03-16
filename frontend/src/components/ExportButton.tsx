@@ -4,15 +4,25 @@ import { useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { exportPDF } from "@/lib/api";
 import BookingInfoModal, { BookingInfo } from "./BookingInfoModal";
+import InvoiceInfoModal, { InvoiceInfo } from "./InvoiceInfoModal";
 
 export default function ExportButton() {
     const { groupedData, consumptionValues, threadSettings, uploadResult, excludedCategories, activePO } = useAppStore();
-    const [exporting, setExporting] = useState(false);
-    const [modalOpen, setModalOpen] = useState(false);
+
+    const [workOrderExporting, setWorkOrderExporting] = useState(false);
+    const [workOrderModalOpen, setWorkOrderModalOpen] = useState(false);
+
+    const [invoiceExporting, setInvoiceExporting] = useState(false);
+    const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
 
     if (!groupedData) return null;
 
-    const handleExport = async (bookingInfo: BookingInfo) => {
+    const runExport = async (
+        info: BookingInfo | InvoiceInfo,
+        exportType: "work_order" | "invoice",
+        setExporting: (v: boolean) => void,
+        setModalOpen: (v: boolean) => void
+    ) => {
         setExporting(true);
         try {
             const filename = uploadResult?.filename?.replace(".pdf", "") || "PO_Export";
@@ -188,16 +198,33 @@ export default function ExportButton() {
                 }
             }
 
-            // Convert BookingInfo to the format expected by the backend
-            const bookingInfoPayload = {
-                date: bookingInfo.date,
-                supplier_name: bookingInfo.supplierName,
-                address: bookingInfo.address,
-                attention: bookingInfo.attention,
-                from_field: bookingInfo.from,
-                order_no: bookingInfo.orderNo,
-                ref_no: bookingInfo.refNo,
-            };
+            // Convert Info to the format expected by the backend
+            let bookingInfoPayload: Record<string, string> | null = null;
+            let invoiceInfoPayload: Record<string, string> | null = null;
+
+            if (exportType === "work_order") {
+                const bi = info as BookingInfo;
+                bookingInfoPayload = {
+                    date: bi.date,
+                    supplier_name: bi.supplierName,
+                    address: bi.address,
+                    attention: bi.attention,
+                    from_field: bi.from,
+                    order_no: bi.orderNo,
+                    ref_no: bi.refNo,
+                };
+            } else if (exportType === "invoice") {
+                const iv = info as InvoiceInfo;
+                invoiceInfoPayload = {
+                    bill: iv.bill,
+                    performa_invoice_no: iv.performaInvoiceNo,
+                    bank_details: iv.bankDetails,
+                    buyer: iv.buyer,
+                    net_weight: iv.netWeight,
+                    gross_weight: iv.grossWeight,
+                    date: iv.date,
+                };
+            }
             const mappedThreadSettings: Record<string, any> = {};
             for (const [k, v] of Object.entries(threadSettings || {})) {
                 mappedThreadSettings[k] = {
@@ -207,9 +234,15 @@ export default function ExportButton() {
                 };
             }
 
-            await exportPDF(cleanData, consumptionValues, filename,
+            await exportPDF(
+                cleanData, 
+                consumptionValues, 
+                filename,
                 Object.keys(mappedThreadSettings).length > 0 ? mappedThreadSettings : null,
-                bookingInfoPayload);
+                bookingInfoPayload,
+                exportType,
+                invoiceInfoPayload
+            );
 
             setModalOpen(false);
         } catch (err) {
@@ -218,27 +251,57 @@ export default function ExportButton() {
         } finally { setExporting(false); }
     };
 
+    const buttonClass = "group flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors " +
+        "bg-[#18181b] dark:bg-[#fafafa] text-white dark:text-[#09090b] hover:bg-[#27272a] dark:hover:bg-[#e5e5e5] " +
+        "active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed";
+
+    const DownloadIcon = () => (
+        <svg className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+    );
+
     return (
         <>
-            <button onClick={() => setModalOpen(true)}
-                className="group flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors
-                    bg-[#18181b] dark:bg-[#fafafa] text-white dark:text-[#09090b] hover:bg-[#27272a] dark:hover:bg-[#e5e5e5]
-                    active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
-                id="export-btn"
+            {/* Work Order Button */}
+            <button
+                onClick={() => setWorkOrderModalOpen(true)}
+                disabled={workOrderExporting}
+                className={buttonClass}
+                id="work-order-btn"
             >
-                <svg className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span className="hidden sm:inline">Export PDF</span>
-                <span className="sm:hidden">PDF</span>
+                <DownloadIcon />
+                <span className="hidden sm:inline">Work Order</span>
+                <span className="sm:hidden">WO</span>
             </button>
 
             <BookingInfoModal
-                open={modalOpen}
-                onClose={() => setModalOpen(false)}
-                onExport={handleExport}
-                exporting={exporting}
+                open={workOrderModalOpen}
+                title="Work Order Sheet Information"
+                onClose={() => setWorkOrderModalOpen(false)}
+                onExport={(info) => runExport(info, "work_order", setWorkOrderExporting, setWorkOrderModalOpen)}
+                exporting={workOrderExporting}
+            />
+
+            {/* Invoice Button */}
+            <button
+                onClick={() => setInvoiceModalOpen(true)}
+                disabled={invoiceExporting}
+                className={buttonClass}
+                id="invoice-btn"
+            >
+                <DownloadIcon />
+                <span className="hidden sm:inline">Invoice</span>
+                <span className="sm:hidden">INV</span>
+            </button>
+
+            <InvoiceInfoModal
+                open={invoiceModalOpen}
+                title="Invoice Sheet Information"
+                onClose={() => setInvoiceModalOpen(false)}
+                onExport={(info) => runExport(info, "invoice", setInvoiceExporting, setInvoiceModalOpen)}
+                exporting={invoiceExporting}
             />
         </>
     );

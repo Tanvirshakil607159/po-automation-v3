@@ -2,21 +2,21 @@
 
 import { useState, useEffect, useRef } from "react";
 
-export interface BookingInfo {
+export interface InvoiceInfo {
+    bill: string;
+    performaInvoiceNo: string;
+    bankDetails: string;
+    buyer: string;
+    netWeight: string;
+    grossWeight: string;
     date: string;
-    supplierName: string;
-    address: string;
-    attention: string;
-    from: string;
-    orderNo: string;
-    refNo: string;
 }
 
 interface Props {
     open: boolean;
     title?: string;
     onClose: () => void;
-    onExport: (info: BookingInfo) => void;
+    onExport: (info: InvoiceInfo) => void;
     exporting: boolean;
 }
 
@@ -28,15 +28,15 @@ function getTodayDate(): string {
     return `${dd}/${mm}/${yyyy}`;
 }
 
-export default function BookingInfoModal({ open, title = "Booking Sheet Information", onClose, onExport, exporting }: Props) {
-    const [info, setInfo] = useState<BookingInfo>({
+export default function InvoiceInfoModal({ open, title = "Invoice Sheet Information", onClose, onExport, exporting }: Props) {
+    const [info, setInfo] = useState<InvoiceInfo>({
+        bill: "",
+        performaInvoiceNo: "",
+        bankDetails: "",
+        buyer: "",
+        netWeight: "",
+        grossWeight: "",
         date: getTodayDate(),
-        supplierName: "",
-        address: "",
-        attention: "",
-        from: "",
-        orderNo: "",
-        refNo: "",
     });
     const firstInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,7 +49,7 @@ export default function BookingInfoModal({ open, title = "Booking Sheet Informat
 
     if (!open) return null;
 
-    const set = (key: keyof BookingInfo, val: string) =>
+    const set = (key: keyof InvoiceInfo, val: string) =>
         setInfo((prev) => ({ ...prev, [key]: val }));
 
     const inputClass =
@@ -72,7 +72,7 @@ export default function BookingInfoModal({ open, title = "Booking Sheet Informat
                         {title}
                     </h2>
                     <p className="text-[12px] text-[#a1a1aa] dark:text-[#71717a] mt-0.5">
-                        Fill in the details for the PDF booking sheet header.
+                        Fill in the details for the PDF invoice sheet header.
                     </p>
                 </div>
 
@@ -86,85 +86,78 @@ export default function BookingInfoModal({ open, title = "Booking Sheet Informat
                             value={info.date}
                             readOnly
                             className={`${inputClass} cursor-default opacity-70`}
-                            id="booking-date"
                         />
                     </div>
 
-                    {/* Row: Supplier Name */}
-                    <div>
-                        <label className={labelClass}>Supplier Name</label>
-                        <input
-                            ref={firstInputRef}
-                            type="text"
-                            value={info.supplierName}
-                            onChange={(e) => set("supplierName", e.target.value)}
-                            placeholder="Enter supplier name"
-                            className={inputClass}
-                            id="booking-supplier"
-                        />
+                    {/* Row: Bill + Performa Invoice No */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className={labelClass}>Bill</label>
+                            <input
+                                ref={firstInputRef}
+                                type="text"
+                                value={info.bill}
+                                onChange={(e) => set("bill", e.target.value)}
+                                placeholder="Bill to..."
+                                className={inputClass}
+                            />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Performa Invoice No.</label>
+                            <input
+                                type="text"
+                                value={info.performaInvoiceNo}
+                                onChange={(e) => set("performaInvoiceNo", e.target.value)}
+                                placeholder="Invoice No."
+                                className={inputClass}
+                            />
+                        </div>
                     </div>
 
-                    {/* Address */}
+                    {/* Bank Details */}
                     <div>
-                        <label className={labelClass}>Address</label>
+                        <label className={labelClass}>Bank Details</label>
                         <textarea
-                            value={info.address}
-                            onChange={(e) => set("address", e.target.value)}
-                            placeholder="Enter supplier address"
+                            value={info.bankDetails}
+                            onChange={(e) => set("bankDetails", e.target.value)}
+                            placeholder="Enter bank details"
                             rows={2}
                             className={`${inputClass} resize-none`}
-                            id="booking-address"
                         />
                     </div>
 
-                    {/* Row: Attention + From */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className={labelClass}>Attention</label>
-                            <input
-                                type="text"
-                                value={info.attention}
-                                onChange={(e) => set("attention", e.target.value)}
-                                placeholder="Attention to"
-                                className={inputClass}
-                                id="booking-attention"
-                            />
-                        </div>
-                        <div>
-                            <label className={labelClass}>From</label>
-                            <input
-                                type="text"
-                                value={info.from}
-                                onChange={(e) => set("from", e.target.value)}
-                                placeholder="From"
-                                className={inputClass}
-                                id="booking-from"
-                            />
-                        </div>
+                    {/* Buyer */}
+                    <div>
+                        <label className={labelClass}>Buyer</label>
+                        <input
+                            type="text"
+                            value={info.buyer}
+                            onChange={(e) => set("buyer", e.target.value)}
+                            placeholder="Buyer name"
+                            className={inputClass}
+                        />
                     </div>
 
-                    {/* Row: Order No + Ref No */}
+                    {/* Row: Net Weight + Gross Weight */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className={labelClass}>Order No.</label>
+                            <label className={labelClass}>Net Weight</label>
                             <input
                                 type="text"
-                                value={info.orderNo}
-                                onChange={(e) => set("orderNo", e.target.value)}
-                                placeholder="Order number"
+                                value={info.netWeight}
+                                onChange={(e) => set("netWeight", e.target.value)}
+                                placeholder="e.g. 50 kg"
                                 className={inputClass}
-                                id="booking-order-no"
                             />
                         </div>
                         <div>
-                            <label className={labelClass}>Ref. No.</label>
+                            <label className={labelClass}>Gross Weight</label>
                             <input
                                 type="text"
-                                value={info.refNo}
-                                onChange={(e) => set("refNo", e.target.value)}
-                                placeholder="Reference number"
+                                value={info.grossWeight}
+                                onChange={(e) => set("grossWeight", e.target.value)}
+                                placeholder="e.g. 55 kg"
                                 className={inputClass}
-                                id="booking-ref-no"
                             />
                         </div>
                     </div>
@@ -176,7 +169,6 @@ export default function BookingInfoModal({ open, title = "Booking Sheet Informat
                         onClick={onClose}
                         disabled={exporting}
                         className="px-4 py-2 rounded-lg text-[13px] font-medium bg-[#f5f5f5] dark:bg-[#27272a] text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#e5e5e5] dark:hover:bg-[#3f3f46] transition-colors disabled:opacity-50"
-                        id="booking-cancel-btn"
                     >
                         Cancel
                     </button>
@@ -184,7 +176,6 @@ export default function BookingInfoModal({ open, title = "Booking Sheet Informat
                         onClick={() => onExport(info)}
                         disabled={exporting}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium bg-[#18181b] dark:bg-[#fafafa] text-white dark:text-[#09090b] hover:bg-[#27272a] dark:hover:bg-[#e5e5e5] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        id="booking-export-btn"
                     >
                         {exporting ? (
                             <>
