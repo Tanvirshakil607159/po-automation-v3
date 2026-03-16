@@ -4,12 +4,15 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
 export async function POST(request: NextRequest) {
     try {
-        const formData = await request.formData();
-
-        // Forward the form data to the FastAPI backend
+        // Forward the exact request with headers to preserve multipart boundaries
         const backendResponse = await fetch(`${BACKEND_URL}/api/upload`, {
             method: "POST",
-            body: formData,
+            headers: {
+                "Content-Type": request.headers.get("content-type") || "",
+            },
+            body: request.body,
+            // @ts-ignore - Required for passing ReadableStream in Next.js fetch
+            duplex: "half",
         });
 
         const data = await backendResponse.json();
