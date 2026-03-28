@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
-import FormDataNode from "form-data";
-
 export async function POST(request: NextRequest) {
     try {
         const incomingData = await request.formData();
@@ -13,19 +11,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ detail: "No file provided" }, { status: 400 });
         }
 
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-
-        const backendFormData = new FormDataNode();
-        backendFormData.append("file", buffer, {
-            filename: file.name,
-            contentType: file.type,
-        });
+        const backendFormData = new FormData();
+        backendFormData.append("file", file);
 
         const backendResponse = await fetch(`${BACKEND_URL}/api/upload`, {
             method: "POST",
-            body: backendFormData as any, 
-            headers: backendFormData.getHeaders(),
+            body: backendFormData,
         });
 
         const data = await backendResponse.json();

@@ -94,6 +94,7 @@ def _build_table_elements(
     thread_count: str = "50/2",
     cone_length: float = 4000,
     wastage_for_weight: float = 5.0,
+    currency: str = "BDT",
 ) -> list:
     """Build table + optional thread weight for a set of rows. Returns list of flowable elements."""
     
@@ -138,7 +139,8 @@ def _build_table_elements(
         for i, h in enumerate(base_headers):
             if i == amount_col_idx:
                 # Override original amount with calculated one
-                val = f"<b>{row_amount:,.2f}</b>" if row_amount > 0 else ""
+                currency_symbol = "৳" if currency == "BDT" else "$"
+                val = f"<b>{currency_symbol} {row_amount:,.2f}</b>" if row_amount > 0 else ""
                 row_cells.append(Paragraph(val, cell_style))
             else:
                 val = str(row_data.get(h, ""))
@@ -478,7 +480,7 @@ def create_export_pdf(
         elements.append(Paragraph("<b>DESCRIPTION OF GOODS</b>", section_style))
         elements.append(Spacer(1, 4))
         
-        headers_for_table = ["SL NO.", "ITEM DESCRIPTION", "PID NO.", "QTY", "UNIT", "UNIT PRICE", "TOTAL AMOUNT"]
+        headers_for_table = ["SL NO.", "ITEM DESCRIPTION", "Style No./PO No.", "QTY", "UNIT", "UNIT PRICE", "TOTAL AMOUNT"]
         header_row = [Paragraph(f"<b>{h}</b>", header_cell_style) for h in headers_for_table]
         table_data = [header_row]
         
@@ -522,10 +524,13 @@ def create_export_pdf(
 
                         item_desc = group_name if group_name and group_name != "_flat" else cat_name
 
+                        # Value logic requested by user
+                        order_style_val = str(row.get("Order No--Style No", po_name)) or po_name
+
                         row_cells = [
                             Paragraph(str(sl_no), cell_style),
                             Paragraph(item_desc, cell_left_style),
-                            Paragraph(po_name, cell_left_style),
+                            Paragraph(order_style_val, cell_left_style),
                             Paragraph(f"{order_qty:,.0f}", cell_style),
                             Paragraph(unit_val, cell_style),
                             Paragraph(f"{unit_price:,.2f}" if unit_price > 0 else "", cell_style),
@@ -580,7 +585,8 @@ def create_export_pdf(
             words = num2words(grand_total_amount, lang='en')
             # capitalize correctly
             words = words.replace("-", " ").title()
-            words += " Taka Only"
+            currency_suffix = " Taka Only" if (invoice_info or {}).get("currency", "BDT") == "BDT" else " Dollars Only"
+            words += currency_suffix
             
             in_words_style = ParagraphStyle(
                 "InWords", parent=styles["Normal"],
@@ -654,6 +660,7 @@ def create_export_pdf(
                             available, is_thread=is_thread,
                             thread_count=sub_count, cone_length=sub_cone,
                             wastage_for_weight=sub_wastage,
+                            currency=(booking_info or {}).get("currency", "BDT")
                         )
                         section_elements.append(Spacer(1, 4))
                         elements.append(KeepTogether(section_elements))
@@ -705,6 +712,7 @@ def create_export_pdf(
                         header_cell_style, cell_style, cell_left_style,
                         consumption_values, po_name, cat_name,
                         available, is_thread=False,
+                        currency=(booking_info or {}).get("currency", "BDT")
                     )
                     section_elements.append(Spacer(1, 6))
                     elements.append(KeepTogether(section_elements))
@@ -716,9 +724,10 @@ def create_export_pdf(
                     "POTotalAmount", parent=cell_left_style,
                     fontSize=9, leading=12, alignment=TA_RIGHT,
                 )
+                currency_symbol = "৳" if (booking_info or {}).get("currency", "BDT") == "BDT" else "$"
                 total_amount_data = [[
                     Paragraph("<b>Grand Total Amount:</b>", total_amount_style),
-                    Paragraph(f"<b>৳ {po_total_amount:,.2f}</b>", total_amount_style)
+                    Paragraph(f"<b>{currency_symbol} {po_total_amount:,.2f}</b>", total_amount_style)
                 ]]
                 total_amount_tbl = Table(total_amount_data, colWidths=[available * 0.7, available * 0.3])
                 total_amount_tbl.setStyle(TableStyle([

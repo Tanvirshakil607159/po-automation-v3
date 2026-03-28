@@ -10,6 +10,7 @@ export interface BookingInfo {
     from: string;
     orderNo: string;
     refNo: string;
+    currency: "BDT" | "USD";
 }
 
 interface Props {
@@ -37,6 +38,7 @@ export default function BookingInfoModal({ open, title = "Booking Sheet Informat
         from: "",
         orderNo: "",
         refNo: "",
+        currency: "BDT",
     });
     const firstInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,16 +80,29 @@ export default function BookingInfoModal({ open, title = "Booking Sheet Informat
 
                 {/* Body */}
                 <div className="px-6 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
-                    {/* Date — auto generated, read-only */}
-                    <div>
-                        <label className={labelClass}>Date</label>
-                        <input
-                            type="text"
-                            value={info.date}
-                            readOnly
-                            className={`${inputClass} cursor-default opacity-70`}
-                            id="booking-date"
-                        />
+                    {/* Row: Date + Currency */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className={labelClass}>Date</label>
+                            <input
+                                type="text"
+                                value={info.date}
+                                readOnly
+                                className={`${inputClass} cursor-default opacity-70`}
+                                id="booking-date"
+                            />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Currency</label>
+                            <select
+                                value={info.currency}
+                                onChange={(e) => set("currency", e.target.value as "BDT" | "USD")}
+                                className={inputClass}
+                            >
+                                <option value="BDT">BDT (Taka)</option>
+                                <option value="USD">USD ($)</option>
+                            </select>
+                        </div>
                     </div>
 
                     {/* Row: Supplier Name */}

@@ -212,6 +212,7 @@ export default function ExportButton() {
                     from_field: bi.from,
                     order_no: bi.orderNo,
                     ref_no: bi.refNo,
+                    currency: bi.currency,
                 };
             } else if (exportType === "invoice") {
                 const iv = info as InvoiceInfo;
@@ -223,6 +224,7 @@ export default function ExportButton() {
                     net_weight: iv.netWeight,
                     gross_weight: iv.grossWeight,
                     date: iv.date,
+                    currency: iv.currency,
                 };
             }
             const mappedThreadSettings: Record<string, any> = {};
