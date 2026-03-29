@@ -342,6 +342,28 @@ def group_by_item(rows: list[dict]) -> dict:
         }
 
     headers = list(rows[0].keys())
+
+    # Ensure Unit Price and Amount columns exist for all incoming data
+    has_unit_price = False
+    has_amount = False
+    
+    for h in headers:
+        hl = h.lower().strip()
+        if "rate" in hl or "price" in hl:
+            has_unit_price = True
+        if "amount" in hl or "amt" in hl:
+            has_amount = True
+            
+    if not has_unit_price:
+        headers.append("Unit Price")
+        for r in rows:
+            r["Unit Price"] = ""
+
+    if not has_amount:
+        headers.append("Amount")
+        for r in rows:
+            r["Amount"] = ""
+
     po_col = _find_column_by_keywords(headers, PO_COLUMN_KEYWORDS, exclude_compound=True)
     grouping_col = _find_column_by_keywords(headers, ITEM_COLUMN_KEYWORDS)
     pantone_col = _find_column_by_keywords(headers, PANTONE_COLUMN_KEYWORDS)

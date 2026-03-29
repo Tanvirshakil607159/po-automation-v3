@@ -87,29 +87,47 @@ export default function Home() {
               {/* PO Tabs */}
               <div>
                 <p className="text-[11px] font-medium text-[#a1a1aa] dark:text-[#71717a] uppercase tracking-[0.1em] mb-2">Purchase Orders</p>
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" id="po-tabs">
-                  {poNames.map((po, idx) => {
-                    const isActive = po === activePO;
-                    const catCount = Object.keys(groupedData!.po_groups[po]?.categories || {}).length;
-                    return (
-                      <button
-                        key={po}
-                        onClick={() => setActivePO(po)}
-                        className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] font-medium whitespace-nowrap transition-colors
-                          ${isActive
-                            ? "bg-[#18181b] dark:bg-[#fafafa] text-white dark:text-[#09090b]"
-                            : "bg-[#f5f5f5] dark:bg-[#27272a] text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#e5e5e5] dark:hover:bg-[#3f3f46] hover:text-[#18181b] dark:hover:text-[#fafafa]"
-                          }`}
-                        id={`po-tab-${idx}`}
-                      >
-                        {po}
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium
-                          ${isActive ? "bg-white/15 dark:bg-black/10 text-white/80 dark:text-[#09090b]/70" : "bg-[#e5e5e5] dark:bg-[#3f3f46] text-[#a1a1aa]"}`}>
-                          {catCount}
-                        </span>
-                      </button>
-                    );
-                  })}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 overflow-x-auto pb-0.5" id="po-tabs">
+                  <div className="flex items-center gap-1.5 overflow-x-auto">
+                    {poNames.map((po, idx) => {
+                      const isActive = po === activePO;
+                      const catCount = Object.keys(groupedData!.po_groups[po]?.categories || {}).length;
+                      return (
+                        <button
+                          key={po}
+                          onClick={() => setActivePO(po)}
+                          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] font-medium whitespace-nowrap transition-colors
+                            ${isActive
+                              ? "bg-[#18181b] dark:bg-[#fafafa] text-white dark:text-[#09090b]"
+                              : "bg-[#f5f5f5] dark:bg-[#27272a] text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#e5e5e5] dark:hover:bg-[#3f3f46] hover:text-[#18181b] dark:hover:text-[#fafafa]"
+                            }`}
+                          id={`po-tab-${idx}`}
+                        >
+                          {po}
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium
+                            ${isActive ? "bg-white/15 dark:bg-black/10 text-white/80 dark:text-[#09090b]/70" : "bg-[#e5e5e5] dark:bg-[#3f3f46] text-[#a1a1aa]"}`}>
+                            {catCount}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Fixed Unit Price at the PO level (Main Category Tab) */}
+                  {activePO && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20 ml-auto flex-shrink-0">
+                      <label className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight whitespace-nowrap">Fixed Unit Price for {activePO}:</label>
+                      <input
+                        type="number"
+                        step="0.0001"
+                        min="0"
+                        value={useAppStore.getState().fixedUnitPrices[activePO] || ""}
+                        onChange={(e) => useAppStore.getState().setFixedUnitPrice(activePO, parseFloat(e.target.value) || 0)}
+                        className="w-28 px-3 py-1 rounded-md bg-white dark:bg-[#09090b] border border-blue-200 dark:border-blue-800 text-[13px] font-semibold text-blue-600 dark:text-blue-400 text-center focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+                        placeholder="Set price..."
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 

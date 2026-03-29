@@ -129,17 +129,6 @@ export default function InvoiceInfoModal({ open, title = "Invoice Sheet Informat
                         </div>
                     </div>
 
-                    {/* Bank Details */}
-                    <div>
-                        <label className={labelClass}>Bank Details</label>
-                        <textarea
-                            value={info.bankDetails}
-                            onChange={(e) => set("bankDetails", e.target.value)}
-                            placeholder="Enter bank details"
-                            rows={2}
-                            className={`${inputClass} resize-none`}
-                        />
-                    </div>
 
                     {/* Buyer */}
                     <div>

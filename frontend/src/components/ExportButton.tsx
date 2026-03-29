@@ -1,19 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAppStore } from "@/lib/store";
-import { exportPDF } from "@/lib/api";
+import { exportPDFBlob } from "@/lib/api";
 import BookingInfoModal, { BookingInfo } from "./BookingInfoModal";
 import InvoiceInfoModal, { InvoiceInfo } from "./InvoiceInfoModal";
+import PdfPreviewModal from "./PdfPreviewModal";
 
 export default function ExportButton() {
-    const { groupedData, consumptionValues, threadSettings, uploadResult, excludedCategories, activePO } = useAppStore();
+    const { groupedData, consumptionValues, threadSettings, uploadResult, excludedCategories, activePO, fixedUnitPrices } = useAppStore();
 
     const [workOrderExporting, setWorkOrderExporting] = useState(false);
     const [workOrderModalOpen, setWorkOrderModalOpen] = useState(false);
 
     const [invoiceExporting, setInvoiceExporting] = useState(false);
     const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+
+    // PDF Preview state for invoice
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [previewFilename, setPreviewFilename] = useState("");
+    const [previewOpen, setPreviewOpen] = useState(false);
 
     if (!groupedData) return null;
 
@@ -28,8 +34,8 @@ export default function ExportButton() {
             const filename = uploadResult?.filename?.replace(".pdf", "") || "PO_Export";
             const cleanData = JSON.parse(JSON.stringify(groupedData));
 
-            // ── Only export the currently selected group ──────────────
-            if (activePO && cleanData.po_groups) {
+            // ── Only export the currently selected group for Work Orders ──────────────
+            if (exportType === "work_order" && activePO && cleanData.po_groups) {
                 const selectedGroup = cleanData.po_groups[activePO];
                 if (selectedGroup) {
                     cleanData.po_groups = { [activePO]: selectedGroup };
@@ -74,18 +80,20 @@ export default function ExportButton() {
 
             if (cleanData.po_groups) {
                 for (const po in cleanData.po_groups) {
-                    const cats = cleanData.po_groups[po].categories;
-                    for (const catName in cats) {
-                        if (excludedCategories.includes(`${po}::${catName}`)) {
-                            delete cats[catName];
-                            continue;
-                        }
+                        const cats = cleanData.po_groups[po].categories;
+                        const priceColIdx = _getPriceColIndexFunc(filteredHeaders);
 
-                        const catData = cats[catName];
-                        const isThread = po.toLowerCase().includes("thread") || po.toLowerCase().includes("sewing") || catName.toLowerCase().includes("thread") || catName.toLowerCase().includes("sewing");
+                        for (const catName in cats) {
+                            if (excludedCategories.includes(`${po}::${catName}`)) {
+                                delete cats[catName];
+                                continue;
+                            }
 
-                        let allThreadTotal = 0;
-                        let allThreadWeightLbs = 0;
+                            const catData = cats[catName];
+                            const isThread = po.toLowerCase().includes("thread") || po.toLowerCase().includes("sewing") || catName.toLowerCase().includes("thread") || catName.toLowerCase().includes("sewing");
+
+                            let allThreadTotal = 0;
+                            let allThreadWeightLbs = 0;
 
                         const processSubGroup = (subName: string, rows: any[]) => {
                             let subTotal = 0;
@@ -109,6 +117,20 @@ export default function ExportButton() {
                                 row._computed_total_req = rowTotal;
                                 row._computed_cons = cons;
                                 row._computed_was = was;
+
+                                // Respect Fixed Unit Price if set
+                                const fixedPrice = fixedUnitPrices[po] || 0;
+                                if (fixedPrice > 0 && priceColIdx >= 0) {
+                                    row[filteredHeaders[priceColIdx]] = String(fixedPrice);
+                                    const amountH = filteredHeaders.find(h => {
+                                        const l = h.toLowerCase().trim();
+                                        return l === "amount" || l.includes("total amount") || l.includes("total price") || l.includes("amt");
+                                    });
+                                    if (amountH) {
+                                        row[amountH] = (fixedPrice * qty).toString();
+                                    }
+                                }
+
                                 subTotal += rowTotal;
                             });
 
@@ -162,7 +184,6 @@ export default function ExportButton() {
 
                     // Calculate PO Grand Total Amount
                     let poTotalAmount = 0;
-                    const priceColIdx = _getPriceColIndexFunc(filteredHeaders);
 
                     for (const catName in cats) {
                         const catData = cats[catName];
@@ -173,7 +194,10 @@ export default function ExportButton() {
                                 const qty = getQty(row);
 
                                 let unitPrice = 0;
-                                if (priceColIdx >= 0) {
+                                const fixedPrice = fixedUnitPrices[po] || 0;
+                                if (fixedPrice > 0) {
+                                    unitPrice = fixedPrice;
+                                } else if (priceColIdx >= 0) {
                                     const v = String(row[filteredHeaders[priceColIdx]] || "0").replace(/,/g, "");
                                     unitPrice = parseFloat(v) || 0;
                                 }
@@ -236,15 +260,19 @@ export default function ExportButton() {
                 };
             }
 
-            await exportPDF(
-                cleanData, 
-                consumptionValues, 
+            // Open preview for both work order and invoice
+            const blobUrl = await exportPDFBlob(
+                cleanData,
+                consumptionValues,
                 filename,
                 Object.keys(mappedThreadSettings).length > 0 ? mappedThreadSettings : null,
                 bookingInfoPayload,
                 exportType,
                 invoiceInfoPayload
             );
+            setPreviewUrl(blobUrl);
+            setPreviewFilename(filename);
+            setPreviewOpen(true);
 
             setModalOpen(false);
         } catch (err) {
@@ -304,6 +332,21 @@ export default function ExportButton() {
                 onClose={() => setInvoiceModalOpen(false)}
                 onExport={(info) => runExport(info, "invoice", setInvoiceExporting, setInvoiceModalOpen)}
                 exporting={invoiceExporting}
+            />
+
+            {/* PDF Preview Modal for Invoice */}
+            <PdfPreviewModal
+                open={previewOpen}
+                pdfUrl={previewUrl}
+                filename={previewFilename}
+                onClose={() => {
+                    setPreviewOpen(false);
+                    // Revoke the blob URL to free memory
+                    if (previewUrl) {
+                        window.URL.revokeObjectURL(previewUrl);
+                        setPreviewUrl(null);
+                    }
+                }}
             />
         </>
     );

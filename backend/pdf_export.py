@@ -10,8 +10,25 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer,
-    HRFlowable, KeepTogether, Image
+    HRFlowable, KeepTogether, Image, Flowable
 )
+
+class PushToBottom(Flowable):
+    def __init__(self, required_space):
+        self.required_space = required_space
+        self.width = 0
+        self.height = 0
+
+    def wrap(self, availWidth, availHeight):
+        self.width = availWidth
+        if availHeight > self.required_space:
+            self.height = availHeight - self.required_space
+        else:
+            self.height = 0
+        return self.width, self.height
+
+    def draw(self):
+        pass
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
@@ -136,11 +153,15 @@ def _build_table_elements(
         grand_amount += row_amount
 
         row_cells = [Paragraph(str(row_idx + 1), cell_style)]
+        currency_symbol = "৳" if currency == "BDT" else "$"
         for i, h in enumerate(base_headers):
             if i == amount_col_idx:
                 # Override original amount with calculated one
-                currency_symbol = "৳" if currency == "BDT" else "$"
                 val = f"<b>{currency_symbol} {row_amount:,.2f}</b>" if row_amount > 0 else ""
+                row_cells.append(Paragraph(val, cell_style))
+            elif i == price_col_idx:
+                # Add currency symbol to unit price
+                val = f"{currency_symbol} {unit_price:,.2f}" if unit_price > 0 else ""
                 row_cells.append(Paragraph(val, cell_style))
             else:
                 val = str(row_data.get(h, ""))
@@ -163,7 +184,8 @@ def _build_table_elements(
         total_row[qty_col_idx + 1] = Paragraph(f"<b>{grand_qty:,.0f}</b>", cell_style)
     
     if amount_col_idx >= 0:
-        total_row[amount_col_idx + 1] = Paragraph(f"<b>{grand_amount:,.2f}</b>", cell_style)
+        currency_symbol = "৳" if currency == "BDT" else "$"
+        total_row[amount_col_idx + 1] = Paragraph(f"<b>{currency_symbol} {grand_amount:,.2f}</b>", cell_style)
 
     total_row[-2] = Paragraph("<b>TOTAL</b>", cell_style)
     total_row[-1] = Paragraph(
@@ -263,6 +285,13 @@ def create_export_pdf(
     )
 
     styles = getSampleStyleSheet()
+    for s in styles.byName.values():
+        if "Bold" in getattr(s, "fontName", ""):
+            s.fontName = "Times-Bold"
+        elif "Oblique" in getattr(s, "fontName", "") or "Italic" in getattr(s, "fontName", ""):
+            s.fontName = "Times-Italic"
+        else:
+            s.fontName = "Times-Roman"
 
     def _draw_page(canvas_obj, doc_obj):
         _draw_watermark(canvas_obj, doc_obj)
@@ -405,8 +434,16 @@ def create_export_pdf(
         return Paragraph(text or "", booking_value_style)
 
     if export_type == "invoice" and invoice_info:
-        applicant_str = "K.A. DESIGN WEAR LTD.<br/>308/1 TILARGATI, TONGI, GAZIPUR-1712<br/>BANGLADESH"
-        beneficiary_str = "K.A. DESIGN ACCESSORIES LTD.<br/>356/1, BLOCK-B, TEK KATHORA, SALNA, GAZIPUR-1703, BANGLADESH"
+        applicant_str = "<b>K.A. DESIGN WEAR LTD.</b><br/>308/1 TILARGATI, TONGI, GAZIPUR-1712<br/>BANGLADESH"
+        beneficiary_str = "<b>K.A. DESIGN ACCESSORIES LTD.</b><br/>356/1, BLOCK-B, TEK KATHORA, SALNA, GAZIPUR-1703, BANGLADESH"
+        
+        bank_details_str = (
+            "<b>UNITED COMMERCIAL BANK PLC.</b><br/>"
+            "TONGI BRANCH<br/>"
+            "18, S.K MANNAN TOWER, CHERAG ALI<br/>"
+            "GAZIPUR-1712, BANGLADESH<br/><br/>"
+            "SWIFT CODE: UCBLBDDHTNG"
+        )
 
         header_rows = [
             [_lbl("Date:"), _val(invoice_info.get("date", ""))],
@@ -414,7 +451,7 @@ def create_export_pdf(
             [_lbl("PERFORMA INVOICE NO:"), _val(invoice_info.get("performa_invoice_no", ""))],
             [_lbl("APPLICANT:"), _val(applicant_str)],
             [_lbl("BENEFICIARY:"), _val(beneficiary_str)],
-            [_lbl("BANK DETAILS:"), _val(invoice_info.get("bank_details", ""))],
+            [_lbl("BANK DETAILS:"), _val(bank_details_str)],
             [_lbl("BUYER:"), _val(invoice_info.get("buyer", ""))],
         ]
         
@@ -460,6 +497,13 @@ def create_export_pdf(
         elements.append(Spacer(1, 6))
 
     base_headers = grouped_data.get("headers", [])
+    if export_type == "work_order":
+        # Remove Unit Price and Amount for Work Order
+        base_headers = [
+            h for h in base_headers 
+            if not any(kw in h.lower().strip() for kw in ["unit price", "u.price", "u. price", "price", "rate", "amount", "total amount", "amt"])
+        ]
+
     qty_col_idx = _get_qty_col_index(base_headers)
     po_groups = grouped_data.get("po_groups", {})
 
@@ -486,64 +530,79 @@ def create_export_pdf(
         
         price_col_idx = _get_price_col_index(base_headers)
         qty_col_idx = _get_qty_col_index(base_headers)
+        inv_currency = "৳" if (invoice_info or {}).get("currency", "BDT") == "BDT" else "$"
         
         grand_total_amount = 0.0
         grand_total_qty = 0.0
         sl_no = 1
+
+        # First pass: aggregate all items by main category (po_name) across all styles
+        category_aggregates = {}  # po_name -> { qty, amount, unit_val }
         
         for po_name, po_data in po_groups.items():
             categories = po_data.get("categories", {})
             for cat_name, cat_data in categories.items():
+                all_rows = []
+                if isinstance(cat_data, dict) and "_sub_groups" in cat_data:
+                    for rows in cat_data.get("_sub_groups", {}).values():
+                        all_rows.extend(rows)
+                elif isinstance(cat_data, list):
+                    all_rows.extend(cat_data)
                 
-                # Function to process rows for the invoice
-                def process_invoice_rows(rows, group_name):
-                    nonlocal sl_no, grand_total_amount, grand_total_qty
-                    for r_idx, row in enumerate(rows):
-                        order_qty = float(row.get("_computed_qty", 0))
-                        grand_total_qty += order_qty
-                        
-                        unit_price = 0.0
-                        if price_col_idx >= 0:
-                            price_val = str(row.get(base_headers[price_col_idx], "0")).replace(",", "")
-                            try:
-                                unit_price = float(price_val)
-                            except ValueError:
-                                unit_price = 0.0
-                        
-                        row_amount = unit_price * order_qty
-                        grand_total_amount += row_amount
-                        
-                        # Fallbacks to find UNIT 
-                        unit_val = ""
+                if not all_rows:
+                    continue
+                
+                if po_name not in category_aggregates:
+                    category_aggregates[po_name] = {"qty": 0.0, "amount": 0.0, "unit_val": "", "styles": []}
+                
+                agg = category_aggregates[po_name]
+                # Collect style from this category group (cat_name holds "StyleNo--PO XXX")
+                if cat_name and cat_name not in agg["styles"]:
+                    agg["styles"].append(cat_name)
+                for row in all_rows:
+                    order_qty = float(row.get("_computed_qty", 0))
+                    agg["qty"] += order_qty
+                    
+                    unit_price = 0.0
+                    if price_col_idx >= 0:
+                        price_val = str(row.get(base_headers[price_col_idx], "0")).replace(",", "")
+                        try:
+                            unit_price = float(price_val)
+                        except ValueError:
+                            unit_price = 0.0
+                    
+                    agg["amount"] += (unit_price * order_qty)
+                    
+                    if not agg["unit_val"]:
                         for h in base_headers:
                             if "unit" in h.lower() and "price" not in h.lower() and "rate" not in h.lower():
-                                unit_val = str(row.get(h, ""))
-                                break
-                        if not unit_val:
-                            unit_val = "PCS" # Default
+                                val = str(row.get(h, ""))
+                                if val:
+                                    agg["unit_val"] = val
+                                    break
 
-                        item_desc = group_name if group_name and group_name != "_flat" else cat_name
-
-                        # Value logic requested by user
-                        order_style_val = str(row.get("Order No--Style No", po_name)) or po_name
-
-                        row_cells = [
-                            Paragraph(str(sl_no), cell_style),
-                            Paragraph(item_desc, cell_left_style),
-                            Paragraph(order_style_val, cell_left_style),
-                            Paragraph(f"{order_qty:,.0f}", cell_style),
-                            Paragraph(unit_val, cell_style),
-                            Paragraph(f"{unit_price:,.2f}" if unit_price > 0 else "", cell_style),
-                            Paragraph(f"<b>{row_amount:,.2f}</b>" if row_amount > 0 else "", cell_style),
-                        ]
-                        table_data.append(row_cells)
-                        sl_no += 1
-
-                if isinstance(cat_data, dict) and "_sub_groups" in cat_data:
-                    for sub_name, rows in cat_data.get("_sub_groups", {}).items():
-                        process_invoice_rows(rows, sub_name)
-                elif isinstance(cat_data, list):
-                    process_invoice_rows(cat_data, cat_name)
+        # Second pass: emit one row per main category
+        for cat_main_name, agg in category_aggregates.items():
+            cat_qty = agg["qty"]
+            cat_amount = agg["amount"]
+            unit_val = agg["unit_val"] or "PCS"
+            
+            grand_total_qty += cat_qty
+            grand_total_amount += cat_amount
+            
+            avg_unit_price = (cat_amount / cat_qty) if cat_qty > 0 else 0.0
+            
+            row_cells = [
+                Paragraph(str(sl_no), cell_style),
+                Paragraph(cat_main_name, cell_left_style),
+                Paragraph(", ".join(agg.get("styles", [])), cell_left_style),
+                Paragraph(f"{cat_qty:,.0f}", cell_style),
+                Paragraph(unit_val, cell_style),
+                Paragraph(f"{inv_currency} {avg_unit_price:,.2f}" if avg_unit_price > 0 else "", cell_style),
+                Paragraph(f"<b>{inv_currency} {cat_amount:,.2f}</b>" if cat_amount > 0 else "", cell_style),
+            ]
+            table_data.append(row_cells)
+            sl_no += 1
         
         # ── Grand Total Row ────────────────────────────────────
         total_row = [
@@ -553,7 +612,7 @@ def create_export_pdf(
             Paragraph(f"<b>{grand_total_qty:,.0f}</b>", cell_style), 
             "", 
             "", 
-            Paragraph(f"<b>{grand_total_amount:,.2f}</b>", cell_style)
+            Paragraph(f"<b>{inv_currency} {grand_total_amount:,.2f}</b>", cell_style)
         ]
         table_data.append(total_row)
         
@@ -582,7 +641,9 @@ def create_export_pdf(
         elements.append(Spacer(1, 10))
 
         if grand_total_amount > 0:
-            words = num2words(grand_total_amount, lang='en')
+            # Round to 2 decimal places for "in words"
+            rounded_amount = round(grand_total_amount, 2)
+            words = num2words(rounded_amount, lang='en')
             # capitalize correctly
             words = words.replace("-", " ").title()
             currency_suffix = " Taka Only" if (invoice_info or {}).get("currency", "BDT") == "BDT" else " Dollars Only"
@@ -615,6 +676,42 @@ def create_export_pdf(
             fontSize=9, leading=12, textColor=BLACK,
         )
         elements.append(Paragraph("<b>TERMS AND CONDITIONS:</b> CASH ON DELIVERY", terms_style))
+
+        # ── Signatures ──────────────────────────────────────────────
+        sig_style_left = ParagraphStyle(
+            "SigLeft", parent=styles["Normal"],
+            fontSize=9, leading=12, alignment=TA_LEFT, textColor=BLACK,
+        )
+        sig_style_center = ParagraphStyle(
+            "SigCenter", parent=styles["Normal"],
+            fontSize=9, leading=12, alignment=TA_CENTER, textColor=BLACK,
+        )
+        sig_style_right = ParagraphStyle(
+            "SigRight", parent=styles["Normal"],
+            fontSize=9, leading=12, alignment=TA_RIGHT, textColor=BLACK,
+        )
+
+        sig1 = "<br/><br/><br/><br/>--------------------<br/>Prepared By<br/>For KADAL"
+        sig2 = "<br/><br/><br/><br/>--------------------<br/>Authorized By<br/>For KADAL"
+        sig3 = "<br/><br/><br/><br/>--------------------<br/>Accepted By<br/>Buyer Signature &amp; Seal (KADWL)"
+
+        sig_table_data = [[
+            Paragraph(sig1, sig_style_left),
+            Paragraph(sig2, sig_style_center),
+            Paragraph(sig3, sig_style_right)
+        ]]
+
+        sig_table = Table(sig_table_data, colWidths=[available / 3.0] * 3)
+        sig_table.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]))
+
+        # Push to the bottom of the page (reserving ~40mm for the signatures themselves)
+        elements.append(PushToBottom(40 * mm))
+        elements.append(sig_table)
 
     else:
         # ── Standard Work Order flow: separated by PO and Category ───
@@ -718,29 +815,7 @@ def create_export_pdf(
                     elements.append(KeepTogether(section_elements))
 
             # ── PO Grand Total Amount ────────────────────────────────────
-            po_total_amount = float(po_data.get("_computed_po_total_amount", 0.0))
-            if po_total_amount > 0:
-                total_amount_style = ParagraphStyle(
-                    "POTotalAmount", parent=cell_left_style,
-                    fontSize=9, leading=12, alignment=TA_RIGHT,
-                )
-                currency_symbol = "৳" if (booking_info or {}).get("currency", "BDT") == "BDT" else "$"
-                total_amount_data = [[
-                    Paragraph("<b>Grand Total Amount:</b>", total_amount_style),
-                    Paragraph(f"<b>{currency_symbol} {po_total_amount:,.2f}</b>", total_amount_style)
-                ]]
-                total_amount_tbl = Table(total_amount_data, colWidths=[available * 0.7, available * 0.3])
-                total_amount_tbl.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f0fdf4")),
-                    ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#16a34a")),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                    ("RIGHTPADDING", (1, 0), (1, 0), 12),
-                    ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#16a34a"))
-                ]))
-                elements.append(Spacer(1, 6))
-                elements.append(total_amount_tbl)
-                elements.append(Spacer(1, 10))
+            # Omitted for work orders to remove price/amount dependencies
 
     doc.build(elements, onFirstPage=_draw_page, onLaterPages=_draw_page)
     buffer.seek(0)

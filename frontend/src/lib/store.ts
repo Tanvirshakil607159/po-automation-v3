@@ -75,6 +75,7 @@ interface AppState {
     isUploading: boolean;
     consumptionValues: ConsumptionValues;
     threadSettings: Record<string, { count: string; coneLength: number; wastage: number }>;
+    fixedUnitPrices: Record<string, number>;
     history: HistoryItem[];
 
     setUploadResult: (result: UploadResult) => void;
@@ -83,6 +84,7 @@ interface AppState {
     setIsUploading: (val: boolean) => void;
     setConsumption: (po: string, category: string, rowIndex: number, field: "consumption" | "wastage", value: number) => void;
     setThreadSetting: (po: string, subKey: string, field: "count" | "coneLength" | "wastage", value: string | number) => void;
+    setFixedUnitPrice: (po: string, value: number) => void;
     setHistory: (items: HistoryItem[]) => void;
     clearUpload: () => void;
     excludedCategories: string[];
@@ -100,6 +102,7 @@ export const useAppStore = create<AppState>((set) => ({
     isUploading: false,
     consumptionValues: {},
     threadSettings: {},
+    fixedUnitPrices: {},
     history: [],
     excludedCategories: [],
 
@@ -114,6 +117,15 @@ export const useAppStore = create<AppState>((set) => ({
                 }
             };
         });
+    },
+
+    setFixedUnitPrice: (po, value) => {
+        set((state) => ({
+            fixedUnitPrices: {
+                ...state.fixedUnitPrices,
+                [po]: value
+            }
+        }));
     },
 
     setUploadResult: (result) => {

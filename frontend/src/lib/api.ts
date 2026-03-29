@@ -72,3 +72,35 @@ export async function exportPDF(
     a.remove();
     window.URL.revokeObjectURL(url);
 }
+
+/**
+ * Same as exportPDF but returns a blob URL for preview instead of triggering download.
+ */
+export async function exportPDFBlob(
+    groupedData: Record<string, unknown>,
+    consumptionValues: Record<string, unknown> | null,
+    filename: string,
+    threadSettings?: Record<string, { count: string; cone_length: number }> | null,
+    bookingInfo?: Record<string, string> | null,
+    exportType: "work_order" | "invoice" = "work_order",
+    invoiceInfo?: Record<string, string> | null,
+): Promise<string> {
+    const res = await fetch(`${API_BASE}/api/export`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            grouped_data: groupedData,
+            consumption_values: consumptionValues,
+            thread_settings: threadSettings || null,
+            booking_info: bookingInfo || null,
+            filename,
+            export_type: exportType,
+            invoice_info: invoiceInfo || null,
+        }),
+    });
+
+    if (!res.ok) throw new Error("Export failed");
+
+    const blob = await res.blob();
+    return window.URL.createObjectURL(blob);
+}

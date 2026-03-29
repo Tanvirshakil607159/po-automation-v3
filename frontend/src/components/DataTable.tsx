@@ -21,7 +21,7 @@ const TableRow = memo(function TableRow({
     row, rowIdx, headers, catKey, subKey, isThread, isFlat,
     activePO, qtyColIndex, isEditingRow, editingCol,
     setEditingCell, editItemData, dragPayload,
-    unitPriceIdx, amountIdx
+    unitPriceIdx, amountIdx, fixedUnitPrice
 }: {
     row: Record<string, string>;
     rowIdx: number;
@@ -39,6 +39,7 @@ const TableRow = memo(function TableRow({
     dragPayload: string;
     unitPriceIdx: number;
     amountIdx: number;
+    fixedUnitPrice: number;
 }) {
     const qty = useMemo(() => {
         if (qtyColIndex < 0) return 0;
@@ -62,10 +63,11 @@ const TableRow = memo(function TableRow({
     }
 
     const unitPrice = useMemo(() => {
+        if (fixedUnitPrice > 0) return fixedUnitPrice;
         if (unitPriceIdx < 0) return 0;
         const val = row[headers[unitPriceIdx]] || "0";
         return parseFloat(val) || 0;
-    }, [row, unitPriceIdx, headers]);
+    }, [row, unitPriceIdx, headers, fixedUnitPrice]);
 
     const amount = useMemo(() => {
         return unitPrice * qty;
@@ -105,9 +107,11 @@ const TableRow = memo(function TableRow({
                                 type="number"
                                 step="0.0001"
                                 min="0"
-                                value={row[h] || ""}
+                                value={fixedUnitPrice > 0 ? fixedUnitPrice : (row[h] || "")}
                                 onChange={(e) => editItemData(activePO, catKey, isFlat ? null : subKey, rowIdx, h, e.target.value)}
-                                className="w-20 px-2 py-1 rounded border border-[#e5e5e5] dark:border-[#27272a] bg-white dark:bg-[#09090b] text-[12px] text-center focus:border-blue-500 outline-none"
+                                disabled={fixedUnitPrice > 0}
+                                title={fixedUnitPrice > 0 ? "Using category fixed unit price" : ""}
+                                className={`w-20 px-2 py-1 rounded border border-[#e5e5e5] dark:border-[#27272a] bg-white dark:bg-[#09090b] text-[12px] text-center focus:border-blue-500 outline-none ${fixedUnitPrice > 0 ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-900" : ""}`}
                                 placeholder="0.00"
                             />
                         </td>
@@ -184,6 +188,8 @@ export default function DataTable() {
     const editItemData = useAppStore(s => s.editItemData);
     const threadSettings = useAppStore(s => s.threadSettings);
     const setThreadSetting = useAppStore(s => s.setThreadSetting);
+    const fixedUnitPrices = useAppStore(s => s.fixedUnitPrices);
+    const setFixedUnitPrice = useAppStore(s => s.setFixedUnitPrice);
     const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
     const [dragOverCat, setDragOverCat] = useState<string | null>(null);
     const [dragOverSubCat, setDragOverSubCat] = useState<string | null>(null);
@@ -231,6 +237,8 @@ export default function DataTable() {
     };
 
     const getUnitPrice = (row: Record<string, string>): number => {
+        const fixed = fixedUnitPrices[activePO] || 0;
+        if (fixed > 0) return fixed;
         if (unitPriceIdx < 0) return 0;
         const val = row[headers[unitPriceIdx]] || "0";
         return parseFloat(val) || 0;
@@ -286,6 +294,8 @@ export default function DataTable() {
             grandAmount += (price * qty);
         });
 
+        const fixedPrice = fixedUnitPrices[activePO] || 0;
+
         const ts = getTS(subKey);
         const divisor = THREAD_DIVISORS[ts.count] || 19202.4;
         let rawWeight = isThread && ts.coneLength > 0 && grandTotal > 0 ? grandTotal * (ts.coneLength / divisor) : 0;
@@ -332,6 +342,7 @@ export default function DataTable() {
                                     dragPayload={JSON.stringify({ po: activePO, cat: catKey, subCat: isFlat ? null : subKey, index: rowIdx })}
                                     unitPriceIdx={unitPriceIdx}
                                     amountIdx={amountIdx}
+                                    fixedUnitPrice={fixedPrice}
                                 />
                             ))}
                         </tbody>
@@ -407,7 +418,7 @@ export default function DataTable() {
             const isThread = isThreadCategoryFunc(activePO) || isThreadCategoryFunc(catName);
             const hasSubGroups = catData && typeof catData === "object" && "_sub_groups" in catData;
 
-            const processRows = (rows: any[], subKey: string) => {
+            const processRows = (rows: any[]) => {
                 rows.forEach((row, idx) => {
                     const qty = getQty(row);
                     const unitPrice = getUnitPrice(row);
@@ -418,10 +429,10 @@ export default function DataTable() {
 
             if (hasSubGroups) {
                 Object.entries(catData._sub_groups).forEach(([subName, subRows]: [string, any]) => {
-                    processRows(subRows, subName);
+                    processRows(subRows);
                 });
             } else if (Array.isArray(catData)) {
-                processRows(catData, "_flat");
+                processRows(catData);
             }
         });
 
@@ -462,15 +473,18 @@ export default function DataTable() {
                         className={`rounded-lg overflow-hidden bg-white dark:bg-[#18181b] border transition-colors ${dragOverCat === catName && !dragOverSubCat ? "border-[#3b82f6] border-2 border-dashed bg-[#eff6ff] dark:bg-[#1e3a8a]/20" : "border-[#e5e5e5] dark:border-[#27272a]"}`}>
                         {/* Category Header */}
                         <div className="flex items-center justify-between px-4 py-3 border-b border-[#e5e5e5] dark:border-[#27272a]">
-                            <h3 className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] flex items-center gap-2.5">
-                                <span className={`w-1 h-4 rounded-full ${isThread ? "bg-[#16a34a] dark:bg-[#4ade80]" : "bg-[#2563eb] dark:bg-[#60a5fa]"}`} />
-                                {catName}
-                                {excludedCategories.includes(`${activePO}::${catName}`) && (
-                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#fee2e2] text-[#ef4444] dark:bg-[#7f1d1d] dark:text-[#f87171] uppercase tracking-wider">
-                                        Excluded
-                                    </span>
-                                )}
-                            </h3>
+                            <div className="flex items-center gap-4 flex-1">
+                                <h3 className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] flex items-center gap-2.5">
+                                    <span className={`w-1 h-4 rounded-full ${isThread ? "bg-[#16a34a] dark:bg-[#4ade80]" : "bg-[#2563eb] dark:bg-[#60a5fa]"}`} />
+                                    {catName}
+                                    {excludedCategories.includes(`${activePO}::${catName}`) && (
+                                        <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#fee2e2] text-[#ef4444] dark:bg-[#7f1d1d] dark:text-[#f87171] uppercase tracking-wider">
+                                            Excluded
+                                        </span>
+                                    )}
+                                </h3>
+                            </div>
+
                             {hasSubGroups && (
                                 <div className="flex items-center gap-3">
                                     <button
