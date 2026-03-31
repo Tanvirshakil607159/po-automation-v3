@@ -17,8 +17,9 @@ interface Props {
     open: boolean;
     title?: string;
     onClose: () => void;
-    onExport: (info: InvoiceInfo) => void;
-    exporting: boolean;
+    onExport: (info: InvoiceInfo, type: "bill" | "pi") => void;
+    exportingBill: boolean;
+    exportingPI: boolean;
 }
 
 function getTodayDate(): string {
@@ -29,7 +30,7 @@ function getTodayDate(): string {
     return `${dd}/${mm}/${yyyy}`;
 }
 
-export default function InvoiceInfoModal({ open, title = "Invoice Sheet Information", onClose, onExport, exporting }: Props) {
+export default function InvoiceInfoModal({ open, title = "Invoice Sheet Information", onClose, onExport, exportingBill, exportingPI }: Props) {
     const [info, setInfo] = useState<InvoiceInfo>({
         bill: "",
         performaInvoiceNo: "",
@@ -171,20 +172,21 @@ export default function InvoiceInfoModal({ open, title = "Invoice Sheet Informat
                 <div className="px-6 py-4 border-t border-[#e5e5e5] dark:border-[#27272a] flex items-center justify-end gap-2">
                     <button
                         onClick={onClose}
-                        disabled={exporting}
+                        disabled={exportingBill || exportingPI}
                         className="px-4 py-2 rounded-lg text-[13px] font-medium bg-[#f5f5f5] dark:bg-[#27272a] text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#e5e5e5] dark:hover:bg-[#3f3f46] transition-colors disabled:opacity-50"
                     >
                         Cancel
                     </button>
+                    
                     <button
-                        onClick={() => onExport(info)}
-                        disabled={exporting}
+                        onClick={() => onExport(info, "bill")}
+                        disabled={exportingBill || exportingPI}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium bg-[#18181b] dark:bg-[#fafafa] text-white dark:text-[#09090b] hover:bg-[#27272a] dark:hover:bg-[#e5e5e5] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {exporting ? (
+                        {exportingBill ? (
                             <>
                                 <div className="w-3.5 h-3.5 rounded-full animate-spin border-[1.5px] border-white/30 dark:border-black/20 border-t-white dark:border-t-black" />
-                                Exporting...
+                                Exporting Bill...
                             </>
                         ) : (
                             <>
@@ -192,7 +194,28 @@ export default function InvoiceInfoModal({ open, title = "Invoice Sheet Informat
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                         d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                                Export PDF
+                                Export Bill
+                            </>
+                        )}
+                    </button>
+                    
+                    <button
+                        onClick={() => onExport(info, "pi")}
+                        disabled={exportingBill || exportingPI}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium bg-[#8b5cf6] dark:bg-[#a78bfa] text-white dark:text-[#18181b] hover:bg-[#7c3aed] dark:hover:bg-[#c4b5fd] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {exportingPI ? (
+                            <>
+                                <div className="w-3.5 h-3.5 rounded-full animate-spin border-[1.5px] border-white/30 dark:border-black/20 border-t-white dark:border-t-black" />
+                                Exporting PI...
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Export PI
                             </>
                         )}
                     </button>

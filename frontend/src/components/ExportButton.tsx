@@ -13,7 +13,8 @@ export default function ExportButton() {
     const [workOrderExporting, setWorkOrderExporting] = useState(false);
     const [workOrderModalOpen, setWorkOrderModalOpen] = useState(false);
 
-    const [invoiceExporting, setInvoiceExporting] = useState(false);
+    const [invoiceExportingBill, setInvoiceExportingBill] = useState(false);
+    const [invoiceExportingPI, setInvoiceExportingPI] = useState(false);
     const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
 
     // PDF Preview state for invoice
@@ -27,7 +28,8 @@ export default function ExportButton() {
         info: BookingInfo | InvoiceInfo,
         exportType: "work_order" | "invoice",
         setExporting: (v: boolean) => void,
-        setModalOpen: (v: boolean) => void
+        setModalOpen: (v: boolean) => void,
+        invoiceType?: "bill" | "pi"
     ) => {
         setExporting(true);
         try {
@@ -249,6 +251,7 @@ export default function ExportButton() {
                     gross_weight: iv.grossWeight,
                     date: iv.date,
                     currency: iv.currency,
+                    invoice_type: invoiceType || "bill"
                 };
             }
             const mappedThreadSettings: Record<string, any> = {};
@@ -317,7 +320,7 @@ export default function ExportButton() {
             {/* Invoice Button */}
             <button
                 onClick={() => setInvoiceModalOpen(true)}
-                disabled={invoiceExporting}
+                disabled={invoiceExportingBill || invoiceExportingPI}
                 className={buttonClass}
                 id="invoice-btn"
             >
@@ -330,8 +333,12 @@ export default function ExportButton() {
                 open={invoiceModalOpen}
                 title="Invoice Sheet Information"
                 onClose={() => setInvoiceModalOpen(false)}
-                onExport={(info) => runExport(info, "invoice", setInvoiceExporting, setInvoiceModalOpen)}
-                exporting={invoiceExporting}
+                onExport={(info, type) => {
+                    const setExporting = type === "bill" ? setInvoiceExportingBill : setInvoiceExportingPI;
+                    runExport(info, "invoice", setExporting, setInvoiceModalOpen, type);
+                }}
+                exportingBill={invoiceExportingBill}
+                exportingPI={invoiceExportingPI}
             />
 
             {/* PDF Preview Modal for Invoice */}
