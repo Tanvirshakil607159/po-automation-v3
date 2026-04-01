@@ -11,8 +11,6 @@ function isThreadCategory(name: string): boolean {
     return low.includes("thread") || low.includes("sewing");
 }
 
-
-
 interface EditingCell { po: string; cat: string; subCat: string | null; row: number; col: string; }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -20,7 +18,7 @@ interface EditingCell { po: string; cat: string; subCat: string | null; row: num
 const TableRow = memo(function TableRow({
     row, rowIdx, headers, catKey, subKey, isThread, isFlat,
     activePO, qtyColIndex, isEditingRow, editingCol,
-    setEditingCell, editItemData, dragPayload,
+    setEditingCell, editItemData, deleteItem, dragPayload,
     unitPriceIdx, amountIdx, fixedUnitPrice
 }: {
     row: Record<string, string>;
@@ -36,6 +34,7 @@ const TableRow = memo(function TableRow({
     editingCol: string | null;
     setEditingCell: (cell: EditingCell | null) => void;
     editItemData: (po: string, cat: string, subCat: string | null, rowIdx: number, key: string, newValue: string) => void;
+    deleteItem: (po: string, cat: string, subCat: string | null, rowIdx: number) => void;
     dragPayload: string;
     unitPriceIdx: number;
     amountIdx: number;
@@ -172,6 +171,19 @@ const TableRow = memo(function TableRow({
             <td className="px-3 py-2 text-center">
                 <span className="text-[12px] font-semibold text-[#16a34a] dark:text-[#4ade80]">{totalReq > 0 ? totalReq.toFixed(2) : "—"}</span>
             </td>
+            <td className="px-2 py-1.5 text-center">
+                <button
+                    onClick={() => {
+                        if (window.confirm("Delete this row?")) {
+                            deleteItem(activePO, catKey, isFlat ? null : subKey, rowIdx);
+                        }
+                    }}
+                    className="p-1.5 rounded-md text-[#a1a1aa] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all opacity-0 group-hover:opacity-100"
+                    title="Delete row"
+                >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </td>
         </tr>
     );
 });
@@ -190,6 +202,10 @@ export default function DataTable() {
     const setThreadSetting = useAppStore(s => s.setThreadSetting);
     const fixedUnitPrices = useAppStore(s => s.fixedUnitPrices);
     const setFixedUnitPrice = useAppStore(s => s.setFixedUnitPrice);
+    const deleteSubCategory = useAppStore(s => s.deleteSubCategory);
+    const renameSubCategory = useAppStore(s => s.renameSubCategory);
+    const addItem = useAppStore(s => s.addItem);
+    const deleteItem = useAppStore(s => s.deleteItem);
     const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
     const [dragOverCat, setDragOverCat] = useState<string | null>(null);
     const [dragOverSubCat, setDragOverSubCat] = useState<string | null>(null);
@@ -209,8 +225,6 @@ export default function DataTable() {
         }),
         [headers]
     );
-
-    if (!categories || !activePO) return null;
 
     const unitPriceIdx = useMemo(() =>
         headers.findIndex((h: string) => {
@@ -246,11 +260,13 @@ export default function DataTable() {
 
     const getCons = (po: string, cat: string, subKey: string, rowIdx: number) =>
         consumptionValues[po]?.[`${cat}::${subKey}`]?.[String(rowIdx)]?.consumption ?? 1;
+
     const getWastage = (po: string, cat: string, subKey: string, rowIdx: number) => {
         const isLabelOrLoop = po.toLowerCase().includes("label") || cat.toLowerCase().includes("label") || po.toLowerCase().includes("loop") || cat.toLowerCase().includes("loop");
         const defaultWastage = isLabelOrLoop ? 2 : 5;
         return consumptionValues[po]?.[`${cat}::${subKey}`]?.[String(rowIdx)]?.wastage ?? defaultWastage;
     };
+
     const calcTotal = (po: string, cat: string, subKey: string, rowIdx: number, qty: number, isThread: boolean = false) => {
         const c = getCons(po, cat, subKey, rowIdx);
         if (isThread) return qty * c;
@@ -260,11 +276,13 @@ export default function DataTable() {
 
     const getConsFlat = (po: string, cat: string, rowIdx: number) =>
         consumptionValues[po]?.[cat]?.[String(rowIdx)]?.consumption ?? 1;
+
     const getWastageFlat = (po: string, cat: string, rowIdx: number) => {
         const isLabelOrLoop = po.toLowerCase().includes("label") || cat.toLowerCase().includes("label") || po.toLowerCase().includes("loop") || cat.toLowerCase().includes("loop");
         const defaultWastage = isLabelOrLoop ? 2 : 5;
         return consumptionValues[po]?.[cat]?.[String(rowIdx)]?.wastage ?? defaultWastage;
     };
+
     const calcTotalFlat = (po: string, cat: string, rowIdx: number, qty: number, isThread: boolean = false) => {
         const c = getConsFlat(po, cat, rowIdx);
         if (isThread) return qty * c;
@@ -320,6 +338,7 @@ export default function DataTable() {
                                     <th className="px-3 py-2.5 text-center text-[10px] font-medium text-[#d97706] dark:text-[#fbbf24] uppercase tracking-wider bg-[#fafafa] dark:bg-[#09090b] border-b border-[#e5e5e5] dark:border-[#27272a] whitespace-nowrap">Wastage %</th>
                                 )}
                                 <th className="px-3 py-2.5 text-center text-[10px] font-medium text-[#16a34a] dark:text-[#4ade80] uppercase tracking-wider bg-[#fafafa] dark:bg-[#09090b] border-b border-[#e5e5e5] dark:border-[#27272a] whitespace-nowrap">Total Req.</th>
+                                <th className="px-3 py-2.5 w-10 bg-[#fafafa] dark:bg-[#09090b] border-b border-[#e5e5e5] dark:border-[#27272a]"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -339,17 +358,30 @@ export default function DataTable() {
                                     editingCol={editingCell?.col || null}
                                     setEditingCell={setEditingCell}
                                     editItemData={editItemData}
+                                    deleteItem={deleteItem}
                                     dragPayload={JSON.stringify({ po: activePO, cat: catKey, subCat: isFlat ? null : subKey, index: rowIdx })}
                                     unitPriceIdx={unitPriceIdx}
                                     amountIdx={amountIdx}
                                     fixedUnitPrice={fixedPrice}
                                 />
                             ))}
+                            {/* Add Item Row */}
+                            <tr className="bg-[#fafafa]/50 dark:bg-[#09090b]/20 border-t border-[#f5f5f5] dark:border-[#1a1a1e] hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
+                                <td colSpan={headers.length + (isThread ? 5 : 6)} className="px-4 py-2">
+                                    <button
+                                        onClick={() => addItem(activePO, catKey, isFlat ? null : subKey)}
+                                        className="flex items-center gap-1.5 text-[11px] font-medium text-[#2563eb] dark:text-[#60a5fa] hover:text-[#1d4ed8] dark:hover:text-[#3b82f6] transition-colors"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                        Add New Item
+                                    </button>
+                                </td>
+                            </tr>
                         </tbody>
                         <tfoot>
                             <tr className="bg-[#fafafa] dark:bg-[#09090b] border-t border-[#e5e5e5] dark:border-[#27272a]">
                                 <td className="px-3 py-2.5 text-[11px] font-bold text-[#a1a1aa] dark:text-[#52525b]"></td>
-                                <td className="px-3 py-2.5 text-[11px] font-bold text-[#a1a1aa] dark:text-[#52525b]">Σ</td>
+                                <td className="px-3 py-2.5 text-[11px) font-bold text-[#a1a1aa] dark:text-[#52525b]">Σ</td>
                                 {headers.map((h: string, i: number) => (
                                     <td key={h} className="px-3 py-2.5 text-[12px] font-bold">
                                         {i === qtyColIndex ? <span className="text-[#18181b] dark:text-[#fafafa]">{grandQty.toLocaleString()}</span> : ""}
@@ -419,10 +451,9 @@ export default function DataTable() {
             const hasSubGroups = catData && typeof catData === "object" && "_sub_groups" in catData;
 
             const processRows = (rows: any[]) => {
-                rows.forEach((row, idx) => {
+                rows.forEach((row) => {
                     const qty = getQty(row);
                     const unitPrice = getUnitPrice(row);
-
                     total += (unitPrice * qty);
                 });
             };
@@ -437,7 +468,7 @@ export default function DataTable() {
         });
 
         return total;
-    }, [categories, activePO, excludedCategories, headers, unitPriceIdx, qtyColIndex, consumptionValues]);
+    }, [categories, activePO, excludedCategories, headers, unitPriceIdx, qtyColIndex, consumptionValues, fixedUnitPrices]);
 
     return (
         <div className="space-y-4 relative pb-20" id="data-table-wrapper">
@@ -470,7 +501,7 @@ export default function DataTable() {
                                 } catch (err) { }
                             }
                         }}
-                        className={`rounded-lg overflow-hidden bg-white dark:bg-[#18181b] border transition-colors ${dragOverCat === catName && !dragOverSubCat ? "border-[#3b82f6] border-2 border-dashed bg-[#eff6ff] dark:bg-[#1e3a8a]/20" : "border-[#e5e5e5] dark:border-[#27272a]"}`}>
+                        className={`rounded-lg overflow-hidden bg-white dark:bg-[#18181b] border transition-all ${dragOverCat === catName && !dragOverSubCat ? "border-[#3b82f6] border-2 border-dashed bg-[#eff6ff] dark:bg-[#1e3a8a]/20" : "border-[#e5e5e5] dark:border-[#27272a]"}`}>
                         {/* Category Header */}
                         <div className="flex items-center justify-between px-4 py-3 border-b border-[#e5e5e5] dark:border-[#27272a]">
                             <div className="flex items-center gap-4 flex-1">
@@ -505,9 +536,11 @@ export default function DataTable() {
                                     </span>
                                 </div>
                             )}
+
                             {!hasSubGroups && Array.isArray(catData) && (
                                 <span className="text-[11px] text-[#a1a1aa] dark:text-[#52525b]">{catData.length} items</span>
                             )}
+
                             <button onClick={() => toggleCategoryExclusion(activePO, catName)}
                                 title={excludedCategories.includes(`${activePO}::${catName}`) ? "Include category" : "Exclude category"}
                                 className={`p-1 rounded transition-colors ${excludedCategories.includes(`${activePO}::${catName}`) ? "text-[#10b981] hover:bg-[#d1fae5] dark:hover:bg-[#064e3b]" : "text-[#a1a1aa] hover:bg-[#fee2e2] dark:hover:bg-[#7f1d1d] hover:text-[#ef4444]"}`}>
@@ -547,10 +580,34 @@ export default function DataTable() {
                                             }}
                                             className={`transition-colors ${dragOverCat === catName && dragOverSubCat === subName ? "bg-[#eff6ff] dark:bg-[#1e3a8a]/20 outline-dashed outline-2 outline-[#3b82f6] outline-offset-[-2px]" : ""}`}
                                         >
-                                            <div className="flex items-center gap-2 px-4 py-2 border-b border-[#f5f5f5] dark:border-[#1a1a1e] bg-[#fafafa] dark:bg-[#09090b]">
+                                            <div className="flex items-center gap-2 px-4 py-2 border-b border-[#f5f5f5] dark:border-[#1a1a1e] bg-[#fafafa] dark:bg-[#09090b] group/sub">
                                                 <span className={`w-1 h-1 rounded-full ${isThread ? "bg-[#16a34a] dark:bg-[#4ade80]" : "bg-[#2563eb] dark:bg-[#60a5fa]"}`} />
-                                                <span className="text-[11px] font-medium text-[#71717a] dark:text-[#a1a1aa]">{subName}</span>
-                                                <span className="text-[10px] text-[#a1a1aa] dark:text-[#52525b]">{subRows.length}</span>
+                                                <span className="text-[11px] font-medium text-[#71717a] dark:text-[#a1a1aa] hover:text-[#2563eb] dark:hover:text-[#60a5fa] cursor-pointer transition-colors"
+                                                    onClick={() => {
+                                                        const newName = window.prompt("Rename sub-category:", subName);
+                                                        if (newName && newName.trim() && newName.trim() !== subName) {
+                                                            renameSubCategory(activePO, catName, subName, newName.trim());
+                                                        }
+                                                    }}
+                                                    title="Click to rename"
+                                                >
+                                                    {subName}
+                                                </span>
+                                                <span className="text-[10px] text-[#a1a1aa] dark:text-[#52525b]">{subRows.length} items</span>
+
+                                                <div className="ml-auto flex items-center gap-2 opacity-0 group-hover/sub:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm(`Delete sub-category "${subName}" and all its records?`)) {
+                                                                deleteSubCategory(activePO, catName, subName);
+                                                            }
+                                                        }}
+                                                        className="p-1 rounded text-[#a1a1aa] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all"
+                                                        title="Delete sub-category"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                </div>
                                             </div>
                                             {renderTable(subRows, catName, subName, isThread)}
                                         </div>
@@ -560,7 +617,6 @@ export default function DataTable() {
                                     {isThread && (() => {
                                         let allThreadTotal = 0;
                                         let allThreadWeightLbs = 0;
-                                        let allConeLengthSum = 0;
                                         const subEntries = Object.entries(catData._sub_groups) as [string, any[]][];
 
                                         subEntries.forEach(([subName, subRows]) => {
@@ -576,7 +632,6 @@ export default function DataTable() {
                                             const ts = getTS(subName);
                                             const divisor = THREAD_DIVISORS[ts.count] || 19202.4;
                                             if (ts.coneLength > 0 && subTotal > 0) {
-                                                allConeLengthSum += ts.coneLength;
                                                 let subWeight = subTotal * (ts.coneLength / divisor);
                                                 subWeight = subWeight * (1 + (ts.wastage || 0) / 100);
                                                 allThreadWeightLbs += Math.ceil(subWeight);
@@ -612,7 +667,11 @@ export default function DataTable() {
                                     })()}
                                 </div>
                             ) : (
-                                Array.isArray(catData) && renderTable(catData, catName, "_flat", false)
+                                Array.isArray(catData) && (
+                                    <div className="overflow-hidden">
+                                        {renderTable(catData, catName, "_flat", isThread)}
+                                    </div>
+                                )
                             )
                         )}
                     </div>

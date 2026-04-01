@@ -33,7 +33,16 @@ export default function ExportButton() {
     ) => {
         setExporting(true);
         try {
-            const filename = uploadResult?.filename?.replace(".pdf", "") || "PO_Export";
+            let filename = uploadResult?.filename?.replace(".pdf", "") || "PO_Export";
+            if (exportType === "invoice") {
+                const iv = info as InvoiceInfo;
+                if (invoiceType === "bill") {
+                    filename = iv.bill || "BILL_Export";
+                } else if (invoiceType === "pi") {
+                    filename = iv.performaInvoiceNo || "PI_Export";
+                }
+            }
+
             const cleanData = JSON.parse(JSON.stringify(groupedData));
 
             // ── Only export the currently selected group for Work Orders ──────────────

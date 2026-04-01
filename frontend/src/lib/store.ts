@@ -92,6 +92,10 @@ interface AppState {
     moveItem: (po: string, srcCat: string, srcSubCat: string | null, srcIdx: number, destCat: string, destSubCat: string | null) => void;
     addSubCategory: (po: string, cat: string, subCat: string) => void;
     editItemData: (po: string, cat: string, subCat: string | null, rowIdx: number, key: string, newValue: string) => void;
+    deleteSubCategory: (po: string, cat: string, subCat: string) => void;
+    renameSubCategory: (po: string, cat: string, oldSubCat: string, newSubCat: string) => void;
+    addItem: (po: string, cat: string, subCat: string | null) => void;
+    deleteItem: (po: string, cat: string, subCat: string | null, rowIdx: number) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -328,5 +332,134 @@ export const useAppStore = create<AppState>((set) => ({
             }
 
             return { groupedData: newData };
+        }),
+
+    deleteSubCategory: (po, cat, subCat) =>
+        set((state) => {
+            if (!state.groupedData) return state;
+            const newData = structuredClone(state.groupedData) as GroupedData;
+            const poData = newData.po_groups[po];
+            if (!poData || !poData.categories || !poData.categories[cat]) return state;
+
+            const catData = poData.categories[cat] as any;
+            if (catData && typeof catData === "object" && "_sub_groups" in catData) {
+                delete catData._sub_groups[subCat];
+            }
+
+            // Cleanup associated data
+            const newCons = { ...state.consumptionValues };
+            if (newCons[po]) {
+                delete newCons[po][`${cat}::${subCat}`];
+            }
+
+            const newTS = { ...state.threadSettings };
+            delete newTS[`${po}::${subCat}`];
+
+            return { groupedData: newData, consumptionValues: newCons, threadSettings: newTS };
+        }),
+
+    renameSubCategory: (po, cat, oldSubCat, newSubCat) =>
+        set((state) => {
+            if (!state.groupedData) return state;
+            const newData = structuredClone(state.groupedData) as GroupedData;
+            const poData = newData.po_groups[po];
+            if (!poData || !poData.categories || !poData.categories[cat]) return state;
+
+            const catData = poData.categories[cat] as any;
+            if (catData && typeof catData === "object" && "_sub_groups" in catData) {
+                if (catData._sub_groups[oldSubCat]) {
+                    catData._sub_groups[newSubCat] = catData._sub_groups[oldSubCat];
+                    delete catData._sub_groups[oldSubCat];
+                }
+            }
+
+            // Migrate consumption values
+            const newCons = { ...state.consumptionValues };
+            if (newCons[po] && newCons[po][`${cat}::${oldSubCat}`]) {
+                newCons[po][`${cat}::${newSubCat}`] = newCons[po][`${cat}::${oldSubCat}`];
+                delete newCons[po][`${cat}::${oldSubCat}`];
+            }
+
+            // Migrate thread settings
+            const newTS = { ...state.threadSettings };
+            if (newTS[`${po}::${oldSubCat}`]) {
+                newTS[`${po}::${newSubCat}`] = newTS[`${po}::${oldSubCat}`];
+                delete newTS[`${po}::${oldSubCat}`];
+            }
+
+            return { groupedData: newData, consumptionValues: newCons, threadSettings: newTS };
+        }),
+
+    addItem: (po, cat, subCat) =>
+        set((state) => {
+            if (!state.groupedData) return state;
+            const newData = structuredClone(state.groupedData) as GroupedData;
+            const poData = newData.po_groups[po];
+            if (!poData || !poData.categories || !poData.categories[cat]) return state;
+
+            const catData = poData.categories[cat] as any;
+            let subArray: RowData[] | null = null;
+            if (subCat === null) {
+                if (Array.isArray(catData)) subArray = catData;
+            } else if (catData && typeof catData === "object" && "_sub_groups" in catData) {
+                if (!catData._sub_groups[subCat]) catData._sub_groups[subCat] = [];
+                subArray = catData._sub_groups[subCat];
+            }
+
+            if (!subArray) return state;
+
+            const newRow: RowData = {};
+            state.groupedData.headers.forEach(h => {
+                newRow[h] = "";
+            });
+
+            const newIdx = subArray.length;
+            subArray.push(newRow);
+
+            const catKey = subCat === null ? cat : `${cat}::${subCat}`;
+            const newCons = { ...state.consumptionValues };
+            if (!newCons[po]) newCons[po] = {};
+            if (!newCons[po][catKey]) newCons[po][catKey] = {};
+
+            const baseCat = cat.split("::")[0] || cat;
+            newCons[po][catKey][String(newIdx)] = { consumption: 1, wastage: getDefaultWastage(po, baseCat) };
+
+            return { groupedData: newData, consumptionValues: newCons };
+        }),
+
+    deleteItem: (po, cat, subCat, rowIdx) =>
+        set((state) => {
+            if (!state.groupedData) return state;
+            const newData = structuredClone(state.groupedData) as GroupedData;
+            const poData = newData.po_groups[po];
+            if (!poData || !poData.categories || !poData.categories[cat]) return state;
+
+            const catData = poData.categories[cat] as any;
+            let subArray: RowData[] | null = null;
+            if (subCat === null) {
+                if (Array.isArray(catData)) subArray = catData;
+            } else if (catData && typeof catData === "object" && "_sub_groups" in catData) {
+                subArray = catData._sub_groups[subCat];
+            }
+
+            if (!subArray || rowIdx < 0 || rowIdx >= subArray.length) return state;
+
+            subArray.splice(rowIdx, 1);
+
+            const catKey = subCat === null ? cat : `${cat}::${subCat}`;
+            const newCons = { ...state.consumptionValues };
+            if (newCons[po] && newCons[po][catKey]) {
+                const currentCatValues = { ...newCons[po][catKey] };
+                const indices = Object.keys(currentCatValues).map(Number).sort((a,b) => a-b);
+                const maxIdx = indices.length > 0 ? indices[indices.length - 1] : 0;
+                
+                for (let i = rowIdx; i < maxIdx; i++) {
+                    currentCatValues[String(i)] = currentCatValues[String(i + 1)];
+                }
+                delete currentCatValues[String(maxIdx)];
+                newCons[po][catKey] = currentCatValues;
+            }
+
+            return { groupedData: newData, consumptionValues: newCons };
         }),
 }));

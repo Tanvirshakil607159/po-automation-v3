@@ -119,7 +119,7 @@ export default function InvoiceInfoModal({ open, title = "Invoice Sheet Informat
                             />
                         </div>
                         <div>
-                            <label className={labelClass}>Performa Invoice No.</label>
+                            <label className={labelClass}>Proforma Invoice No.</label>
                             <input
                                 type="text"
                                 value={info.performaInvoiceNo}

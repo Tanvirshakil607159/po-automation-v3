@@ -420,9 +420,9 @@ def create_export_pdf(
     
     if export_type == "invoice":
         if invoice_info and invoice_info.get("invoice_type") == "pi":
-            elements.append(Paragraph("Performa Invoice", subtitle_style))
+            elements.append(Paragraph("PROFORMA INVOICE", subtitle_style))
         else:
-            elements.append(Paragraph("Invoice Sheet", subtitle_style))
+            elements.append(Paragraph("BILL", subtitle_style))
     else:
         elements.append(Paragraph("Booking Order", subtitle_style))
 
@@ -457,7 +457,7 @@ def create_export_pdf(
             header_rows.append([_lbl("BILL:"), _val(invoice_info.get("bill", ""))])
             
         header_rows.extend([
-            [_lbl("PERFORMA INVOICE NO:"), _val(invoice_info.get("performa_invoice_no", ""))],
+            [_lbl("PROFORMA INVOICE NO:"), _val(invoice_info.get("performa_invoice_no", ""))],
             [_lbl("APPLICANT:"), _val(applicant_str)],
             [_lbl("BENEFICIARY:"), _val(beneficiary_str)],
             [_lbl("BANK DETAILS:"), _val(bank_details_str)],
