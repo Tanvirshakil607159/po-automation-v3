@@ -22,6 +22,14 @@ interface Props {
     exportingPI: boolean;
 }
 
+const BUYER_OPTIONS = [
+    "INTERSPORT",
+    "REGATTA",
+    "NM WILLIAM",
+    "SPORTISIMO",
+    "REBOOK",
+];
+
 function getTodayDate(): string {
     const d = new Date();
     const dd = String(d.getDate()).padStart(2, "0");
@@ -41,7 +49,17 @@ export default function InvoiceInfoModal({ open, title = "Invoice Sheet Informat
         date: getTodayDate(),
         currency: "BDT",
     });
+    const [buyerSelection, setBuyerSelection] = useState("");
+    const [buyerExtra, setBuyerExtra] = useState("");
     const firstInputRef = useRef<HTMLInputElement>(null);
+
+    // Combine buyer selection + extra info into the buyer field
+    useEffect(() => {
+        const combined = buyerExtra.trim()
+            ? `${buyerSelection} ${buyerExtra.trim()}`
+            : buyerSelection;
+        setInfo((prev) => ({ ...prev, buyer: combined }));
+    }, [buyerSelection, buyerExtra]);
 
     useEffect(() => {
         if (open) {
@@ -134,11 +152,26 @@ export default function InvoiceInfoModal({ open, title = "Invoice Sheet Informat
                     {/* Buyer */}
                     <div>
                         <label className={labelClass}>Buyer</label>
+                        <select
+                            value={buyerSelection}
+                            onChange={(e) => setBuyerSelection(e.target.value)}
+                            className={inputClass}
+                        >
+                            <option value="">— Select Buyer —</option>
+                            {BUYER_OPTIONS.map((b) => (
+                                <option key={b} value={b}>{b}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Buyer Extra Information */}
+                    <div>
+                        <label className={labelClass}>Extra Information</label>
                         <input
                             type="text"
-                            value={info.buyer}
-                            onChange={(e) => set("buyer", e.target.value)}
-                            placeholder="Buyer name"
+                            value={buyerExtra}
+                            onChange={(e) => setBuyerExtra(e.target.value)}
+                            placeholder="Additional buyer details (optional)"
                             className={inputClass}
                         />
                     </div>
