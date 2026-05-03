@@ -28,6 +28,7 @@ const BUYER_OPTIONS = [
     "NM WILLIAM",
     "SPORTISIMO",
     "REBOOK",
+    "MEXICO",
 ];
 
 function getTodayDate(): string {
