@@ -106,12 +106,12 @@ const TableRow = memo(function TableRow({
                                 type="number"
                                 step="0.0001"
                                 min="0"
-                                value={fixedUnitPrice > 0 ? fixedUnitPrice : (row[h] || "")}
+                                value={fixedUnitPrice > 0 ? fixedUnitPrice.toFixed(4) : (row[h] || "")}
                                 onChange={(e) => editItemData(activePO, catKey, isFlat ? null : subKey, rowIdx, h, e.target.value)}
                                 disabled={fixedUnitPrice > 0}
                                 title={fixedUnitPrice > 0 ? "Using category fixed unit price" : ""}
                                 className={`w-20 px-2 py-1 rounded border border-[#e5e5e5] dark:border-[#27272a] bg-white dark:bg-[#09090b] text-[12px] text-center focus:border-blue-500 outline-none ${fixedUnitPrice > 0 ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-900" : ""}`}
-                                placeholder="0.00"
+                                placeholder="0.0000"
                             />
                         </td>
                     );

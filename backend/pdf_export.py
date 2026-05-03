@@ -161,7 +161,7 @@ def _build_table_elements(
                 row_cells.append(Paragraph(val, cell_style))
             elif i == price_col_idx:
                 # Add currency symbol to unit price
-                val = f"{currency_symbol} {unit_price:,.2f}" if unit_price > 0 else ""
+                val = f"{currency_symbol} {unit_price:,.4f}" if unit_price > 0 else ""
                 row_cells.append(Paragraph(val, cell_style))
             else:
                 val = str(row_data.get(h, ""))
@@ -607,7 +607,7 @@ def create_export_pdf(
                 Paragraph(", ".join(agg.get("styles", [])), cell_left_style),
                 Paragraph(f"{cat_qty:,.0f}", cell_style),
                 Paragraph(unit_val, cell_style),
-                Paragraph(f"{inv_currency} {avg_unit_price:,.2f}" if avg_unit_price > 0 else "", cell_style),
+                Paragraph(f"{inv_currency} {avg_unit_price:,.4f}" if avg_unit_price > 0 else "", cell_style),
                 Paragraph(f"<b>{inv_currency} {cat_amount:,.2f}</b>" if cat_amount > 0 else "", cell_style),
             ]
             table_data.append(row_cells)

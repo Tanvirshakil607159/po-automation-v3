@@ -121,10 +121,10 @@ export default function Home() {
                         type="number"
                         step="0.0001"
                         min="0"
-                        value={useAppStore.getState().fixedUnitPrices[activePO] || ""}
+                        value={useAppStore.getState().fixedUnitPrices[activePO] ? useAppStore.getState().fixedUnitPrices[activePO].toFixed(4) : ""}
                         onChange={(e) => useAppStore.getState().setFixedUnitPrice(activePO, parseFloat(e.target.value) || 0)}
                         className="w-28 px-3 py-1 rounded-md bg-white dark:bg-[#09090b] border border-blue-200 dark:border-blue-800 text-[13px] font-semibold text-blue-600 dark:text-blue-400 text-center focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
-                        placeholder="Set price..."
+                        placeholder="0.0000"
                       />
                     </div>
                   )}
