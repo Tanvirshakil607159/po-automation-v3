@@ -1,12 +1,44 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import UploadZone from "@/components/UploadZone";
 import DataTable from "@/components/DataTable";
 import ExportButton from "@/components/ExportButton";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAppStore } from "@/lib/store";
+
+function FixedPriceInput({ activePO }: { activePO: string }) {
+  const fixedUnitPrice = useAppStore(s => s.fixedUnitPrices[activePO]);
+  const setFixedUnitPrice = useAppStore(s => s.setFixedUnitPrice);
+  const [localValue, setLocalValue] = useState("");
+
+  useEffect(() => {
+    // Only update local value from store when activePO changes
+    setLocalValue(fixedUnitPrice ? fixedUnitPrice.toString() : "");
+  }, [activePO]);
+
+  return (
+    <input
+      type="number"
+      step="0.0001"
+      min="0"
+      value={localValue}
+      onChange={(e) => {
+        setLocalValue(e.target.value);
+        setFixedUnitPrice(activePO, parseFloat(e.target.value) || 0);
+      }}
+      onBlur={() => {
+        // Format to 4 digits on blur for presentation
+        if (fixedUnitPrice) {
+          setLocalValue(fixedUnitPrice.toFixed(4));
+        }
+      }}
+      className="w-28 px-3 py-1 rounded-md bg-white dark:bg-[#09090b] border border-blue-200 dark:border-blue-800 text-[13px] font-semibold text-blue-600 dark:text-blue-400 text-center focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+      placeholder="0.0000"
+    />
+  );
+}
 
 export default function Home() {
   const { groupedData, uploadResult, activePO, setActivePO, clearUpload } = useAppStore();
@@ -117,15 +149,7 @@ export default function Home() {
                   {activePO && (
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20 ml-auto flex-shrink-0">
                       <label className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight whitespace-nowrap">Fixed Unit Price for {activePO}:</label>
-                      <input
-                        type="number"
-                        step="0.0001"
-                        min="0"
-                        value={useAppStore.getState().fixedUnitPrices[activePO] ? useAppStore.getState().fixedUnitPrices[activePO].toFixed(4) : ""}
-                        onChange={(e) => useAppStore.getState().setFixedUnitPrice(activePO, parseFloat(e.target.value) || 0)}
-                        className="w-28 px-3 py-1 rounded-md bg-white dark:bg-[#09090b] border border-blue-200 dark:border-blue-800 text-[13px] font-semibold text-blue-600 dark:text-blue-400 text-center focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
-                        placeholder="0.0000"
-                      />
+                      <FixedPriceInput activePO={activePO} />
                     </div>
                   )}
                 </div>

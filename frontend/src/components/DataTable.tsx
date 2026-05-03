@@ -110,6 +110,14 @@ const TableRow = memo(function TableRow({
                                 onChange={(e) => editItemData(activePO, catKey, isFlat ? null : subKey, rowIdx, h, e.target.value)}
                                 disabled={fixedUnitPrice > 0}
                                 title={fixedUnitPrice > 0 ? "Using category fixed unit price" : ""}
+                                onBlur={(e) => {
+                                    if (fixedUnitPrice <= 0 && e.target.value) {
+                                        const val = parseFloat(e.target.value);
+                                        if (!isNaN(val)) {
+                                            editItemData(activePO, catKey, isFlat ? null : subKey, rowIdx, h, val.toFixed(4));
+                                        }
+                                    }
+                                }}
                                 className={`w-20 px-2 py-1 rounded border border-[#e5e5e5] dark:border-[#27272a] bg-white dark:bg-[#09090b] text-[12px] text-center focus:border-blue-500 outline-none ${fixedUnitPrice > 0 ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-900" : ""}`}
                                 placeholder="0.0000"
                             />
